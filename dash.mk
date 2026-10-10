@@ -21,4 +21,6 @@ $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashLedService/led.mk)
 
 $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashWake/wake.mk)
 
+PRODUCT_PACKAGES += dash-vibrator-adapter
+
 PRODUCT_PACKAGES += privapp-permissions-dash-hardware
