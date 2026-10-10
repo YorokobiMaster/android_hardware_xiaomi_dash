@@ -1,0 +1,4 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+android.media.audio.IHalAdapterVendorExtension/default  u:object_r:audioserver_service:s0
