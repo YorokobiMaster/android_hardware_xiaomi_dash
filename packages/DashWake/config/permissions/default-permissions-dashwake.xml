@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 YorokobiMaster
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- Settings requires the configured attention service to hold CAMERA before
+     it enables the standard Screen attention switch. -->
+<exceptions>
+    <exception package="me.sandai.dashwake">
+        <permission name="android.permission.CAMERA" fixed="true" />
+    </exception>
+</exceptions>

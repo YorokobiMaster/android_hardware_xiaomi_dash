@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <!-- Whether device supports double tap to wake -->
+    <bool name="config_supportDoubleTapWake">true</bool>
+
+    <!-- AOSP Screen attention, backed by dash's front-camera AOV pipeline. -->
+    <string name="config_defaultAttentionService" translatable="false">me.sandai.dashwake/me.sandai.dashwake.aov.DashAttentionService</string>
+    <bool name="config_adaptive_sleep_available">true</bool>
+</resources>

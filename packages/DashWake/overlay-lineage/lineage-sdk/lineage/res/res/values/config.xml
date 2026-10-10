@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <!-- Check proximity for framework wake-key paths such as the KEY_WAKEUP
+         event emitted by double-tap. DashWake arbitrates pickup against the
+         Xiaomi pocket sensor in its own device-specific policy. -->
+    <bool name="config_proximityCheckOnWake">true</bool>
+
+    <!-- Ship it on: this is the behaviour stock users already expect. -->
+    <bool name="config_proximityCheckOnWakeEnabledByDefault">true</bool>
+</resources>
