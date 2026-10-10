@@ -13,14 +13,18 @@ PRODUCT_PACKAGES += \
 PRODUCT_SYSTEM_EXT_PROPERTIES += \
     ro.audio.ihaladaptervendorextension_enabled=true
 
-PRODUCT_PACKAGES += DashCharging
-
-PRODUCT_PACKAGES += DashDolby
+# Device apps
+PRODUCT_PACKAGES += \
+    DashCharging \
+    DashDolby
 
 $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashLedService/led.mk)
-
 $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashWake/wake.mk)
 
-PRODUCT_PACKAGES += dash-vibrator-adapter
+# Vibrator
+PRODUCT_PACKAGES += \
+    dash-vibrator-adapter
 
-PRODUCT_PACKAGES += privapp-permissions-dash-hardware
+# Runtime configuration
+PRODUCT_PACKAGES += \
+    privapp-permissions-dash-hardware
