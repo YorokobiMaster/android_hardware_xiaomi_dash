@@ -1,0 +1,9 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+soong_namespace {
+}
+
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
