@@ -1,0 +1,9 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+prebuilt_etc {
+    name: "init.dash-led.rc",
+    src: "init.dash-led.rc",
+    sub_dir: "init",
+    system_ext_specific: true,
+}

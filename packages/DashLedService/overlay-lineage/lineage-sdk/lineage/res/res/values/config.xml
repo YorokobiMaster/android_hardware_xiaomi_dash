@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <!-- The ring is controlled through DashLED, not Lineage's system lights. -->
+    <integer name="config_deviceLightCapabilities">0</integer>
+</resources>

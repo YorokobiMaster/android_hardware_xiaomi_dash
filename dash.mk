@@ -17,4 +17,6 @@ PRODUCT_PACKAGES += DashCharging
 
 PRODUCT_PACKAGES += DashDolby
 
+$(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashLedService/led.mk)
+
 PRODUCT_PACKAGES += privapp-permissions-dash-hardware

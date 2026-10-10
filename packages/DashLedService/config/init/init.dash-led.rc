@@ -1,0 +1,9 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# Allow DashLedService to write LED registers; SELinux still controls access.
+# Apply after stock odm init resets ownership and mode during boot.
+on property:sys.boot_completed=1
+    chmod 0666 /sys/class/leds/aw21024_led/hwen
+    chmod 0666 /sys/class/leds/aw21024_led/run
+    chmod 0666 /sys/class/leds/aw21024_led/reg

@@ -2,3 +2,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 DASH_HARDWARE_PATH ?= hardware/xiaomi/dash
+
+$(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashLedService/lineage.mk)
