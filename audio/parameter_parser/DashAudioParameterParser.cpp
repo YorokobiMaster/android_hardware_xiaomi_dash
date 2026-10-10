@@ -21,7 +21,7 @@ void appendParameter(const std::string& rawValue, std::vector<VendorParameter>* 
 }  // namespace
 
 ndk::ScopedAStatus DashAudioParameterParser::parseVendorParameterIds(
-        IHalAdapterVendorExtension::ParameterScope /* scope */, const std::string& rawKeys,
+        const IHalAdapterVendorExtension::ParameterScope& /* scope */, const std::string& rawKeys,
         std::vector<std::string>* ids) {
     if (!rawKeys.empty()) {
         ids->emplace_back(rawKeys);
@@ -30,7 +30,7 @@ ndk::ScopedAStatus DashAudioParameterParser::parseVendorParameterIds(
 }
 
 ndk::ScopedAStatus DashAudioParameterParser::parseVendorParameters(
-        IHalAdapterVendorExtension::ParameterScope /* scope */,
+        const IHalAdapterVendorExtension::ParameterScope& /* scope */,
         const std::string& rawKeysAndValues,
         std::vector<VendorParameter>* syncParameters,
         std::vector<VendorParameter>* /* asyncParameters */) {
@@ -51,7 +51,7 @@ ndk::ScopedAStatus DashAudioParameterParser::parseBluetoothLeReconfigureOffload(
 }
 
 ndk::ScopedAStatus DashAudioParameterParser::processVendorParameters(
-        IHalAdapterVendorExtension::ParameterScope /* scope */,
+        const IHalAdapterVendorExtension::ParameterScope& /* scope */,
         const std::vector<VendorParameter>& parameters, std::string* rawKeysAndValues) {
     for (const auto& parameter : parameters) {
         if (parameter.id.empty()) {
