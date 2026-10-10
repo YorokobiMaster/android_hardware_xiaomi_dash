@@ -1,2 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<permissions />
+<!--
+     Copyright (C) 2026 YorokobiMaster
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<permissions>
+    <privapp-permissions package="me.sandai.dashdolby">
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING"/>
+    </privapp-permissions>
+    <signature-permissions package="me.sandai.dashdolby">
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING"/>
+    </signature-permissions>
+</permissions>

@@ -15,4 +15,6 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += \
 
 PRODUCT_PACKAGES += DashCharging
 
+PRODUCT_PACKAGES += DashDolby
+
 PRODUCT_PACKAGES += privapp-permissions-dash-hardware
