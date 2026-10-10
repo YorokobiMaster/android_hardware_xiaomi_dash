@@ -13,4 +13,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_SYSTEM_EXT_PROPERTIES += \
     ro.audio.ihaladaptervendorextension_enabled=true
 
+PRODUCT_PACKAGES += DashCharging
+
 PRODUCT_PACKAGES += privapp-permissions-dash-hardware
