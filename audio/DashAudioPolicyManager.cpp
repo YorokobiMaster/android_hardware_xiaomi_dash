@@ -22,7 +22,7 @@ class DashAudioPolicyManager : public AudioPolicyManager {
         const status_t status = AudioPolicyManager::checkAndSetVolume(
                 curves, volumeSource, index, outputDesc, deviceTypes, adjustAttenuation,
                 delayMs, force);
-        if (status != NO_ERROR || outputDesc != mPrimaryOutput || !isInCall()) {
+        if (status != NO_ERROR || outputDesc == nullptr || !isInCall()) {
             return status;
         }
 
@@ -46,7 +46,7 @@ class DashAudioPolicyManager : public AudioPolicyManager {
         const String8 parameters = String8::format(
                 "volumeDevice=%u;volumeIndex=%d;volumeStreamType=%d",
                 volumeDevice, index, AUDIO_STREAM_VOICE_CALL);
-        mpClientInterface->setParameters(mPrimaryOutput->mIoHandle, parameters, delayMs);
+        mpClientInterface->setParameters(outputDesc->mIoHandle, parameters, delayMs);
         return status;
     }
 };
