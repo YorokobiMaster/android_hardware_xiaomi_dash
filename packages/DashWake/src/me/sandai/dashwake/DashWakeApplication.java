@@ -29,6 +29,7 @@ public final class DashWakeApplication extends Application {
     private static final int TOUCH_STATE_RESUME = 0;
 
     private Handler mHandler;
+    private PocketController mPocketController;
     private int mSyncGeneration;
 
     private final ContentObserver mSettingObserver = new ContentObserver(null) {
@@ -54,11 +55,11 @@ public final class DashWakeApplication extends Application {
         if (!getPackageName().equals(Application.getProcessName())) return;
         System.loadLibrary("dashwake_jni");
 
-        new WakeGestureController(this).start();
-
         HandlerThread handlerThread = new HandlerThread(TAG);
         handlerThread.start();
         mHandler = new Handler(handlerThread.getLooper());
+        mPocketController = new PocketController(this, mHandler);
+        new WakeGestureController(this, mPocketController).start();
 
         getContentResolver().registerContentObserver(
                 Settings.Secure.getUriFor(Settings.Secure.DOUBLE_TAP_TO_WAKE),
@@ -93,6 +94,7 @@ public final class DashWakeApplication extends Application {
         mHandler.post(() -> {
             int generation = ++mSyncGeneration;
             syncSetting(reason, generation, MAX_RETRIES);
+            mPocketController.syncTouchMode(reason);
         });
     }
 

@@ -23,7 +23,9 @@ namespace {
 constexpr char kTouchDevice[] = "/dev/xiaomi-touch";
 constexpr int kTouchId = 0;
 constexpr uint8_t kSetCurrentValue = 0;
+constexpr uint8_t kGetCurrentValue = 1;
 constexpr uint16_t kDoubleTapMode = 14;
+constexpr uint16_t kNonUiMode = 17;
 constexpr uint16_t kTouchSuspendMode = 27;
 
 struct CommonData {
@@ -40,13 +42,15 @@ static_assert(sizeof(CommonData) == 1032);
 constexpr unsigned long kSelectTouchId = _IO('T', 3);
 constexpr unsigned long kCommonData = _IOWR('T', 0, CommonData);
 
-bool setDoubleTapWake(bool enabled) {
+bool requestTouchMode(CommonData& request) {
+    const char* operation = request.command == kSetCurrentValue ? "set" : "get";
     int fd;
     do {
         fd = open(kTouchDevice, O_RDWR | O_CLOEXEC);
     } while (fd < 0 && errno == EINTR);
     if (fd < 0) {
-        ALOGE("Failed to open %s: %s", kTouchDevice, strerror(errno));
+        ALOGE("Failed to open %s to %s mode %u: %s", kTouchDevice, operation,
+              request.mode, strerror(errno));
         return false;
     }
 
@@ -55,18 +59,12 @@ bool setDoubleTapWake(bool enabled) {
         result = ioctl(fd, kSelectTouchId, kTouchId);
     } while (result < 0 && errno == EINTR);
     if (result < 0) {
-        ALOGE("Failed to select touch panel %d: %s", kTouchId, strerror(errno));
+        ALOGE("Failed to select touch panel %d to %s mode %u: %s", kTouchId,
+              operation, request.mode, strerror(errno));
         close(fd);
         return false;
     }
 
-    CommonData request = {
-            .touchId = kTouchId,
-            .command = kSetCurrentValue,
-            .mode = kDoubleTapMode,
-            .dataLength = 1,
-            .data = {enabled ? 1 : 0},
-    };
     do {
         result = ioctl(fd, kCommonData, &request);
     } while (result < 0 && errno == EINTR);
@@ -74,13 +72,43 @@ bool setDoubleTapWake(bool enabled) {
     close(fd);
 
     if (result < 0) {
-        ALOGE("Failed to set Xiaomi touch mode %u: %s", kDoubleTapMode,
+        ALOGE("Failed to %s Xiaomi touch mode %u: %s", operation, request.mode,
               strerror(savedErrno));
         return false;
     }
-    // SET leaves the input payload unchanged; only ioctl reports acceptance.
-    ALOGI("Xiaomi touch mode %u request accepted: %d", kDoubleTapMode, enabled);
     return true;
+}
+
+bool setTouchMode(uint16_t mode, int value) {
+    CommonData request = {
+            .touchId = kTouchId,
+            .command = kSetCurrentValue,
+            .mode = mode,
+            .dataLength = 1,
+            .data = {value},
+    };
+    if (!requestTouchMode(request)) return false;
+    // SET leaves the input payload unchanged; only ioctl reports acceptance.
+    ALOGI("Xiaomi touch mode %u request accepted: %d", mode, value);
+    return true;
+}
+
+int getTouchMode(uint16_t mode) {
+    CommonData request = {
+            .touchId = kTouchId,
+            .command = kGetCurrentValue,
+            .mode = mode,
+            .dataLength = 1,
+            .data = {-1},
+    };
+    if (!requestTouchMode(request)) return -1;
+    if (request.data[0] < 0) {
+        ALOGE("Xiaomi touch mode %u did not return a current kernel value", mode);
+        return -1;
+    }
+    // GET reads the kernel's current request, not firmware acknowledgement.
+    ALOGI("Xiaomi touch mode %u current kernel request: %d", mode, request.data[0]);
+    return request.data[0];
 }
 
 int waitForTouchStateChange() {
@@ -153,7 +181,23 @@ int waitForTouchStateChange() {
 extern "C" JNIEXPORT jboolean JNICALL
 Java_me_sandai_dashwake_DashWakeApplication_nativeSetDoubleTapWake(
         JNIEnv*, jclass, jboolean enabled) {
-    return setDoubleTapWake(enabled == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
+    return setTouchMode(kDoubleTapMode, enabled == JNI_TRUE ? 1 : 0)
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_me_sandai_dashwake_PocketController_nativeSetNonUiMode(
+        JNIEnv*, jclass, jint mode) {
+    if (mode < 0 || mode > 2) {
+        ALOGE("Invalid NonUI mode: %d; expected 0..2", mode);
+        return JNI_FALSE;
+    }
+    return setTouchMode(kNonUiMode, mode) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_me_sandai_dashwake_PocketController_nativeGetNonUiMode(JNIEnv*, jclass) {
+    return getTouchMode(kNonUiMode);
 }
 
 extern "C" JNIEXPORT jint JNICALL

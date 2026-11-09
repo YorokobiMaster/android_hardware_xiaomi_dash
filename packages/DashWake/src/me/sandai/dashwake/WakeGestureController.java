@@ -48,12 +48,14 @@ final class WakeGestureController implements SensorEventListener {
     private final DisplayManager mDisplayManager;
     private final Sensor mPickupSensor;
     private final KeyguardManager mKeyguardManager;
+    private final PocketController mPocketController;
     private boolean mPickupRegistered;
     private boolean mWokeByPickup;
     private AovConnection mAovConnection;
 
-    WakeGestureController(Context context) {
+    WakeGestureController(Context context, PocketController pocketController) {
         mContext = context;
+        mPocketController = pocketController;
         mHandler = new Handler(context.getMainLooper());
         mPowerManager = context.getSystemService(PowerManager.class);
         mSensorManager = context.getSystemService(SensorManager.class);
@@ -206,6 +208,10 @@ final class WakeGestureController implements SensorEventListener {
 
     private void wake(String source) {
         if (!canWake()) return;
+        if (mPocketController.isInPocket()) {
+            Log.i(TAG, "Suppressing wake source=" + source + " while NonUI is active");
+            return;
+        }
         Log.i(TAG, "Wake source=" + source);
         mPowerManager.wakeUp(SystemClock.uptimeMillis(), PowerManager.WAKE_REASON_GESTURE,
                 "me.sandai.dashwake:" + source);
