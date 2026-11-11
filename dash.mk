@@ -16,7 +16,8 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += \
 # Device apps
 PRODUCT_PACKAGES += \
     DashCharging \
-    DashDolby
+    DashDolby \
+    PowerOffAlarm
 
 $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashLedService/led.mk)
 $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashWake/wake.mk)

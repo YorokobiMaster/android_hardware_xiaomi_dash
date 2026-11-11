@@ -17,7 +17,8 @@
         - timerfd: exists, appears unused in userspace, but the only thing we can programatically
                    detect at build time (using device kernel headers), so this is preffered.
     -->
-    <string name="config_powerOffAlarmDrivers" translatable="false">timerfd,alarm,rtc</string>
+    <!-- dash rtc-mt6685 implements RTC_POFF_ALM_SET. -->
+    <string name="config_powerOffAlarmDrivers" translatable="false">rtc</string>
 
     <!--
         The amount of milliseconds the phone has to boot before alarm fires; if the alarm fires

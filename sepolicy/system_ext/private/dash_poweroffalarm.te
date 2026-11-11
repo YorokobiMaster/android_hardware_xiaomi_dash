@@ -1,0 +1,7 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# PowerOffAlarm shares the system UID; /dev/rtc0 is owned by system:system.
+allow system_app rtc_device:chr_file { getattr open read write ioctl };
+# RTC_RD_TIME and the MediaTek RTC_POFF_ALM_SET extension.
+allowxperm system_app rtc_device:chr_file ioctl { 0x7009 0x7015 };

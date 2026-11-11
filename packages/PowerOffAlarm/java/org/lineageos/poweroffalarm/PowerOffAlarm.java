@@ -90,6 +90,8 @@ public class PowerOffAlarm {
             long currentTime = System.currentTimeMillis();
             if (time <= currentTime + mPreBootMillisec) {
                 Log.w(TAG, time + " is too early, current time is " + currentTime + "!");
+                // A changed alarm inside the boot window must not leave an older wakeup armed.
+                cancelAlarmInRtc();
                 return;
             }
             long rtcTime = -1;

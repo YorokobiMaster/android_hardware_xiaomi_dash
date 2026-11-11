@@ -47,9 +47,10 @@ extern "C" void Java_org_lineageos_poweroffalarm_RtcDriver_set(JNIEnv*, jobject,
     rtc.tm_yday = tm.tm_yday;
     rtc.tm_isdst = tm.tm_isdst;
     if (ioctl(fd, RTC_POFF_ALM_SET, &rtc) == -1) {
-        ALOGV("RTC_POFF_ALM_SET ioctl failed: %s", strerror(errno));
+        ALOGE("RTC_POFF_ALM_SET ioctl failed: %s", strerror(errno));
         return;
     }
+    ALOGI("RTC_POFF_ALM_SET succeeded: time=%ld", ctime);
 }
 
 extern "C" void Java_org_lineageos_poweroffalarm_RtcDriver_cancel(JNIEnv* env, jobject thiz) {
@@ -65,7 +66,7 @@ extern "C" jlong Java_org_lineageos_poweroffalarm_RtcDriver_getRtcTimeOptional(J
 
     struct rtc_time rtc = {};
     if (ioctl(fd, RTC_RD_TIME, &rtc) == -1) {
-        ALOGV("RTC_RD_TIME ioctl failed: %s", strerror(errno));
+        ALOGE("RTC_RD_TIME ioctl failed: %s", strerror(errno));
         return -1;
     }
 
