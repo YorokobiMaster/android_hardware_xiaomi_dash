@@ -43,10 +43,14 @@ class DashAudioPolicyManager : public AudioPolicyManager {
             return status;
         }
 
+        const auto swOutput = mOutputs.getOutputFromId(outputDesc->getId());
+        if (swOutput == nullptr) {
+            return status;
+        }
         const String8 parameters = String8::format(
                 "volumeDevice=%u;volumeIndex=%d;volumeStreamType=%d",
                 volumeDevice, index, AUDIO_STREAM_VOICE_CALL);
-        mpClientInterface->setParameters(outputDesc->mIoHandle, parameters, delayMs);
+        mpClientInterface->setParameters(swOutput->mIoHandle, parameters, delayMs);
         return status;
     }
 };
