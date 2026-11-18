@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 YorokobiMaster
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="app_name">应用调度</string>
+    <string name="settings_summary">按应用选择调度策略</string>
+    <string name="action_search">搜索</string>
+    <string name="search_apps_hint">搜索应用…</string>
+    <string name="action_show_system">显示系统应用</string>
+    <string name="action_hide_system">隐藏系统应用</string>
+    <string name="filter_all_apps">全部应用</string>
+    <string name="filter_modified">已修改</string>
+    <string name="service_unavailable">调度服务不可用</string>
+    <string name="save_failed">保存失败，请重试</string>
+    <string name="last_error_format">最近错误：%1$s</string>
+
+    <string name="section_general">通用</string>
+    <string name="section_gaming">游戏</string>
+    <string name="section_others">其他</string>
+
+    <string name="profile_default">默认</string>
+    <string name="profile_everyday">日常应用</string>
+    <string name="profile_video">视频播放</string>
+    <string name="profile_standard">标准</string>
+    <string name="profile_enhanced">增强</string>
+    <string name="profile_extreme">极致</string>
+    <string name="profile_evaluation">跑分</string>
+    <string name="profile_navigation">导航</string>
+    <string name="profile_camera">相机/相册</string>
+    <string name="profile_transfer">换机</string>
+    <string name="profile_arvr">AR/VR</string>
+    <string name="profile_demo">Demo</string>
+
+    <string name="profile_default_summary">默认调度策略，适用于大部分应用</string>
+    <string name="profile_everyday_summary">为日常高频前台应用设计</string>
+    <string name="profile_video_summary">降低长时间视频播放的发热，并保持稳定</string>
+    <string name="profile_standard_summary">标准游戏温控与帧调度</string>
+    <string name="profile_enhanced_summary">提高 CPU 上限，减少 GPU 提前降频</string>
+    <string name="profile_extreme_summary">提高内存带宽下限，放宽持续 GPU 温控区间，耗电更高</string>
+    <string name="profile_evaluation_summary">放宽 GPU 提前降频并提高内存带宽下限，可能增加耗电</string>
+    <string name="profile_navigation_summary">面向长时间导航的温控策略</string>
+    <string name="profile_camera_summary">相机温控与帧调度策略</string>
+    <string name="profile_transfer_summary">面向换机与数据迁移的温控策略</string>
+    <string name="profile_arvr_summary">面向 AR 与 VR 负载的温控策略</string>
+    <string name="profile_demo_summary">面向持续演示场景的温控策略</string>
+
+    <string name="profile_unknown">未知策略（%1$d）</string>
+
+    <string name="detail_footer">手动档位决定应用调度，不随性能模式或事件场景切换。</string>
+    <string name="performance_mode_title">性能模式</string>
+    <string name="performance_mode_summary">放宽部分调度限制，可能增加耗电。</string>
+</resources>

@@ -1,0 +1,6 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# Real path resolved on dash; all other thermal nodes retain their vendor labels.
+genfscon sysfs /devices/virtual/thermal/thermal_message/sconfig u:object_r:sysfs_dash_sconfig:s0
+genfscon sysfs /kernel/thermal/gpt u:object_r:sysfs_dash_gpt:s0
