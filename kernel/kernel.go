@@ -142,7 +142,7 @@ func (m *kernelModule) sourceDeps(ctx android.ModuleContext) android.Paths {
 func (m *kernelModule) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 	config := ctx.Config().VendorConfig("kleaf")
 	profile := config.String("profile")
-	if profile != "normal" && profile != "strict" && profile != "official" {
+	if profile != "normal" && profile != "official" {
 		ctx.ModuleErrorf("unknown kernel profile %q", profile)
 		return
 	}
