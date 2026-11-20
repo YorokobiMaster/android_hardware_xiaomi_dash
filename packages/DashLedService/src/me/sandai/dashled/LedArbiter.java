@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.function.LongSupplier;
 
 import me.sandai.dashled.aidl.DashLedEffect;
+import me.sandai.dashled.aidl.IDashLedManager;
 
 /**
  * Session registry + priority arbitration. The highest-category session that
@@ -40,6 +41,7 @@ public final class LedArbiter {
     private long mRenderedSeq = -1;
     private EffectRunner mEffectRunner;
     private BpcCompletion mBpcDone;
+    private NotificationPulse mNotification;
 
     public final class Session {
         private final int category;
@@ -92,6 +94,22 @@ public final class LedArbiter {
         renderLocked();
     }
 
+    synchronized void playNotification(DashLedEffect effect) {
+        if (!mOutputEnabled) {
+            return;
+        }
+        discardNotificationLocked();
+        Session session = acquire(IDashLedManager.CATEGORY_NOTIFICATION);
+        session.effect = effect;
+        session.seq = mNextSeq++;
+        NotificationPulse pulse = new NotificationPulse(session);
+        mNotification = pulse;
+        pulse.scheduleExpiryLocked();
+        renderLocked();
+        // Only the initial render may start a full hardware pattern.
+        pulse.allowFullFirstPattern = false;
+    }
+
     public synchronized void clear(Session session) {
         if (!mSessions.contains(session)) {
             return;
@@ -111,12 +129,15 @@ public final class LedArbiter {
         renderLocked();
     }
 
-    /** Master switch. Content is kept, so re-enabling restores the last state. */
+    /** Master switch. Re-enabling restores other content, but not a notification pulse. */
     public synchronized void setOutputEnabled(boolean enabled) {
         if (mOutputEnabled == enabled) {
             return;
         }
         mOutputEnabled = enabled;
+        if (!enabled) {
+            discardNotificationLocked();
+        }
         renderLocked();
     }
 
@@ -127,6 +148,10 @@ public final class LedArbiter {
     }
 
     private void renderLocked() {
+        if (mNotification != null
+                && mElapsedRealtime.getAsLong() >= mNotification.deadlineElapsedMs) {
+            discardNotificationLocked();
+        }
         Session active = null;
         for (Session session : mSessions) {
             if (session.colors == null && session.effect == null) {
@@ -155,7 +180,9 @@ public final class LedArbiter {
         stopEffectLocked();
         mRendered = active;
         mRenderedSeq = active.seq;
-        if (active.effect != null) {
+        if (mNotification != null && active == mNotification.session) {
+            mNotification.renderLocked();
+        } else if (active.effect != null) {
             if (isBpcCompatible(active.effect)) {
                 playBpcLocked(active);
             } else {
@@ -202,6 +229,10 @@ public final class LedArbiter {
     public void onWake() {
         final BpcCompletion done;
         synchronized (this) {
+            if (mNotification != null
+                    && mElapsedRealtime.getAsLong() >= mNotification.deadlineElapsedMs) {
+                renderLocked();
+            }
             done = mBpcDone;
             if (done == null || done.deadlineElapsedMs == 0
                     || mElapsedRealtime.getAsLong() < done.deadlineElapsedMs) {
@@ -241,7 +272,20 @@ public final class LedArbiter {
         }
     }
 
+    private void discardNotificationLocked() {
+        if (mNotification == null) {
+            return;
+        }
+        mHandler.removeCallbacks(mNotification);
+        mAlarmManager.cancel(mNotification);
+        mSessions.remove(mNotification.session);
+        mNotification = null;
+    }
+
     private void stopEffectLocked() {
+        if (mNotification != null && mRendered == mNotification.session) {
+            mNotification.renderGeneration++;
+        }
         if (mEffectRunner != null) {
             mHandler.removeCallbacks(mEffectRunner);
             mEffectRunner = null;
@@ -252,6 +296,98 @@ public final class LedArbiter {
                 mAlarmManager.cancel(mBpcDone);
             }
             mBpcDone = null;
+        }
+    }
+
+    /** The built-in pulse has one elapsed-time budget, even while hidden by the camera. */
+    private final class NotificationPulse implements Runnable, AlarmManager.OnAlarmListener {
+        private final Session session;
+        private final long cycleMs;
+        private final long durationMs;
+        private long startElapsedMs;
+        private long deadlineElapsedMs;
+        private int renderGeneration;
+        private boolean allowFullFirstPattern = true;
+
+        NotificationPulse(Session session) {
+            this.session = session;
+            DashLedEffect effect = session.effect;
+            cycleMs = Aw21024Backend.estimateBpcCycleMs(effect.periodMs);
+            durationMs = Aw21024Backend.estimateBpcDurationMs(effect.periodMs, effect.repeatCount);
+            startElapsedMs = mElapsedRealtime.getAsLong();
+        }
+
+        void scheduleExpiryLocked() {
+            mHandler.removeCallbacks(this);
+            if (deadlineElapsedMs != 0) {
+                mAlarmManager.cancel(this);
+            }
+            deadlineElapsedMs = startElapsedMs + durationMs;
+            mHandler.postDelayed(this,
+                    Math.max(0, deadlineElapsedMs - mElapsedRealtime.getAsLong()));
+            mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME,
+                    deadlineElapsedMs, "DashLed:notification", this, mHandler);
+        }
+
+        void renderLocked() {
+            DashLedEffect effect = session.effect;
+            int generation = ++renderGeneration;
+            Runnable failed = () -> {
+                synchronized (LedArbiter.this) {
+                    if (isCurrentRender(generation)) {
+                        discardNotificationLocked();
+                        LedArbiter.this.renderLocked();
+                    }
+                }
+            };
+            boolean initial = allowFullFirstPattern;
+            // BPC cannot seek. On resume, fit the remaining cycle slots into
+            // the original visible window, excluding its 500 ms cleanup margin.
+            mBackend.submitBpcBreathWithin(effect.colors, effect.brightness,
+                    effect.periodMs, effect.repeatCount, () -> {
+                        synchronized (LedArbiter.this) {
+                            long now = mElapsedRealtime.getAsLong();
+                            if (!isCurrentRender(generation) || now >= deadlineElapsedMs) {
+                                return 0;
+                            }
+                            long visibleMs = cycleMs * effect.repeatCount;
+                            return initial ? visibleMs : startElapsedMs + visibleMs - now;
+                        }
+                    }, initial ? () -> {
+                        synchronized (LedArbiter.this) {
+                            if (isCurrentRender(generation)) {
+                                startElapsedMs = mElapsedRealtime.getAsLong();
+                                scheduleExpiryLocked();
+                            }
+                        }
+                    } : null, failed);
+        }
+
+        private boolean isCurrentRender(int generation) {
+            return mNotification == this && mRendered == session
+                    && renderGeneration == generation;
+        }
+
+        @Override
+        public void onAlarm() {
+            run();
+        }
+
+        @Override
+        public void run() {
+            synchronized (LedArbiter.this) {
+                if (mNotification != this) {
+                    return;
+                }
+                long remaining = deadlineElapsedMs - mElapsedRealtime.getAsLong();
+                if (remaining <= 0) {
+                    LedArbiter.this.renderLocked();
+                } else {
+                    // A completion queued before the first hardware start can still arrive.
+                    mHandler.removeCallbacks(this);
+                    mHandler.postDelayed(this, remaining);
+                }
+            }
         }
     }
 

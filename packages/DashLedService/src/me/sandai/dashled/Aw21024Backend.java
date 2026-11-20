@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.function.LongSupplier;
 
 /**
  * Serialized, rate-limited writer for /sys/class/leds/aw21024_led.
@@ -64,6 +65,8 @@ public final class Aw21024Backend {
             2100, 2600, 3100, 4200, 5200, 6200, 7300, 8300};
     /** T1/T3 nibble 0 is not 0 ms on this chip; the datasheet says 40 ms. */
     private static final int HOLD_ZERO_MS = 40;
+    private static final int BPC_CLEANUP_MARGIN_MS = 500;
+    private static final int MIN_BPC_PERIOD_MS = 2;
 
     private final Object mLock = new Object();
     private final Handler mHandler;
@@ -84,6 +87,7 @@ public final class Aw21024Backend {
     private int mPendingRepeatCount;
     private Runnable mPendingStarted;
     private Runnable mPendingFailed;
+    private LongSupplier mPendingBudget;
 
     public Aw21024Backend() {
         this(createHandler(), Aw21024Backend::writeSysfsNode);
@@ -116,6 +120,7 @@ public final class Aw21024Backend {
             mPendingPeriodMs = 0;
             mPendingStarted = null;
             mPendingFailed = null;
+            mPendingBudget = null;
             scheduleFlushLocked();
         }
     }
@@ -127,6 +132,7 @@ public final class Aw21024Backend {
             mPendingPeriodMs = 0;
             mPendingStarted = null;
             mPendingFailed = null;
+            mPendingBudget = null;
             scheduleFlushLocked();
         }
     }
@@ -151,6 +157,7 @@ public final class Aw21024Backend {
         final int repeatCount;
         final Runnable started;
         final Runnable failed;
+        final LongSupplier budget;
         synchronized (mLock) {
             mFlushScheduled = false;
             mLastFlushUptimeMs = SystemClock.uptimeMillis();
@@ -161,11 +168,13 @@ public final class Aw21024Backend {
             repeatCount = mPendingRepeatCount;
             started = mPendingStarted;
             failed = mPendingFailed;
+            budget = mPendingBudget;
             mPendingColors = null;
             mPendingOff = false;
             mPendingPeriodMs = 0;
             mPendingStarted = null;
             mPendingFailed = null;
+            mPendingBudget = null;
             if (colors == null && !off) {
                 return;
             }
@@ -174,8 +183,13 @@ public final class Aw21024Backend {
             if (off) {
                 powerOff();
             } else if (periodMs > 0) {
-                startBpc(colors, brightness, periodMs, repeatCount);
-                started.run();
+                if (startBpc(colors, brightness, periodMs, repeatCount, budget)) {
+                    if (started != null) {
+                        started.run();
+                    }
+                } else {
+                    failed.run();
+                }
             } else {
                 if (!mPowered || mBpcActive) {
                     powerOn();
@@ -231,6 +245,12 @@ public final class Aw21024Backend {
      */
     public void submitBpcBreath(int[] colors, int brightness, int periodMs, int repeatCount,
             Runnable onStarted, Runnable onFailed) {
+        submitBpcBreathWithin(colors, brightness, periodMs, repeatCount, null,
+                onStarted, onFailed);
+    }
+
+    void submitBpcBreathWithin(int[] colors, int brightness, int periodMs, int repeatCount,
+            LongSupplier budget, Runnable onStarted, Runnable onFailed) {
         synchronized (mLock) {
             mPendingColors = colors.clone();
             mPendingBrightness = brightness;
@@ -239,14 +259,17 @@ public final class Aw21024Backend {
             mPendingRepeatCount = repeatCount;
             mPendingStarted = onStarted;
             mPendingFailed = onFailed;
+            mPendingBudget = budget;
             scheduleFlushLocked();
         }
     }
 
-    private void startBpc(int[] colors, int brightness, int periodMs, int repeatCount)
-            throws IOException {
-        int rise = quantizeTimerNibble(periodMs / 2);
-        int fall = quantizeTimerNibble(periodMs - periodMs / 2);
+    private boolean startBpc(int[] colors, int brightness, int periodMs, int repeatCount,
+            LongSupplier budget) throws IOException {
+        long minCycleMs = estimateBpcCycleMs(MIN_BPC_PERIOD_MS);
+        if (budget != null && budget.getAsLong() < minCycleMs) {
+            return false;
+        }
         brightness = Math.max(0, Math.min(255, brightness));
 
         writeNode(NODE_HWEN, "0");
@@ -282,14 +305,41 @@ public final class Aw21024Backend {
             writeReg(REG_GCOLDIS, 0x10);
         }
         writeReg(REG_GCFG0, BPC_ZONE_MASK);
+        // A budget can expire during setup. The next frame still needs to
+        // leave BPC mode even when this pattern never reaches PATGO.
+        mBpcActive = true;
+        if (budget != null) {
+            // Snapshot after sysfs setup so queuing and reset latency do not buy extra time.
+            long remainingMs = budget.getAsLong();
+            if (remainingMs < minCycleMs) {
+                return false;
+            }
+            long originalCycleMs = estimateBpcCycleMs(periodMs);
+            repeatCount = (int) Math.min(repeatCount,
+                    (remainingMs + originalCycleMs - 1) / originalCycleMs);
+            repeatCount = (int) Math.min(repeatCount, remainingMs / minCycleMs);
+            periodMs = fitBpcPeriodMs(periodMs, remainingMs / repeatCount);
+        }
+        int rise = quantizeTimerNibble(periodMs / 2);
+        int fall = quantizeTimerNibble(periodMs - periodMs / 2);
         writeReg(REG_PATT0, (rise << 4) | 0x00);
         writeReg(REG_PATT1, (fall << 4) | 0x00);
         writeReg(REG_PATT2, 0x00);
         writeReg(REG_PATT3, repeatCount > 0 ? repeatCount : 0);
         writeReg(REG_PATCFG, 0x07);
+        if (budget != null) {
+            // If the final register writes stalled, don't start a pattern
+            // that would now outlast the original cleanup deadline.
+            long remainingMs = budget.getAsLong();
+            if (remainingMs <= 0
+                    || estimateBpcCycleMs(periodMs) * repeatCount
+                            > remainingMs + BPC_CLEANUP_MARGIN_MS) {
+                return false;
+            }
+        }
         writeReg(REG_PATGO, 0x01);
         mPowered = true;
-        mBpcActive = true;
+        return true;
     }
 
     /** True when a triangle breath of this shape can run on the chip: both
@@ -302,13 +352,31 @@ public final class Aw21024Backend {
                 && quantizeTimerNibble(periodMs - periodMs / 2) > 0;
     }
 
+    static long estimateBpcCycleMs(int periodMs) {
+        int rise = quantizeTimerNibble(periodMs / 2);
+        int fall = quantizeTimerNibble(periodMs - periodMs / 2);
+        return TIMER_MS[rise] + HOLD_ZERO_MS + TIMER_MS[fall] + HOLD_ZERO_MS;
+    }
+
     /** Upper-bound wall time of a finite hardware breath, with margin. The
      *  chip self-stops; this only schedules the arbiter's cleanup callback. */
     static long estimateBpcDurationMs(int periodMs, int repeatCount) {
-        int rise = quantizeTimerNibble(periodMs / 2);
-        int fall = quantizeTimerNibble(periodMs - periodMs / 2);
-        long cycleMs = TIMER_MS[rise] + HOLD_ZERO_MS + TIMER_MS[fall] + HOLD_ZERO_MS;
-        return cycleMs * repeatCount + 500;
+        return estimateBpcCycleMs(periodMs) * repeatCount + BPC_CLEANUP_MARGIN_MS;
+    }
+
+    /** Longest encodable period that fits a cycle slot, including both holds. */
+    private static int fitBpcPeriodMs(int originalPeriodMs, long slotMs) {
+        int lo = MIN_BPC_PERIOD_MS;
+        int hi = originalPeriodMs;
+        while (lo < hi) {
+            int mid = lo + (hi - lo + 1) / 2;
+            if (estimateBpcCycleMs(mid) <= slotMs) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return lo;
     }
 
     /** Mirrors the driver's midpoint rounding in period_store. -1 when the

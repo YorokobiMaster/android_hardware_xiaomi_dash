@@ -11,7 +11,6 @@ import android.service.notification.StatusBarNotification;
 import java.util.Arrays;
 
 import me.sandai.dashled.aidl.DashLedEffect;
-import me.sandai.dashled.aidl.IDashLedManager;
 
 /** Built-in producer: short breathing pulse on all zones for new notifications. */
 public final class NotificationLedController {
@@ -42,24 +41,6 @@ public final class NotificationLedController {
         effect.periodMs = PERIOD_MS;
         effect.repeatCount = REPEATS;
 
-        LedArbiter arbiter = LedCore.get(context).arbiter();
-        synchronized (NotificationLedController.class) {
-            // A newer notification supersedes the pulse that is still running.
-            if (sSession != null) {
-                arbiter.release(sSession);
-            }
-            sSession = arbiter.acquire(IDashLedManager.CATEGORY_NOTIFICATION);
-            final LedArbiter.Session session = sSession;
-            arbiter.playEffect(session, effect, () -> {
-                synchronized (NotificationLedController.class) {
-                    if (sSession == session) {
-                        sSession = null;
-                    }
-                }
-                arbiter.release(session);
-            });
-        }
+        LedCore.get(context).arbiter().playNotification(effect);
     }
-
-    private static LedArbiter.Session sSession;
 }
