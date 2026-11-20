@@ -8,8 +8,12 @@ final class AppEntry {
     final String packageName;
     final String label;
 
-    /** Override from the getState() overrides bundle; -1 means automatic. */
+    int listPosition;
+    boolean iconRequested;
+
+    /** Saved override; -1 means automatic. */
     int overrideProfile = -1;
+    boolean overrideUnconfirmed;
 
     /** Effective profile from getAppPolicy(); -1 until loaded. */
     int selectedProfile = -1;
@@ -17,6 +21,12 @@ final class AppEntry {
     /** Lazily loaded through getAppPolicy(); null until loaded. */
     String stockGroup;
     boolean policyRequested;
+    boolean policySettled;
+    int policyRequest;
+
+    int displayProfile() {
+        return overrideUnconfirmed ? -1 : overrideProfile != -1 ? overrideProfile : selectedProfile;
+    }
 
     AppEntry(String packageName, String label) {
         this.packageName = packageName;

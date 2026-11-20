@@ -25,6 +25,9 @@ final class AppListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     private static final int VIEW_TYPE_FILTER = 0;
     private static final int VIEW_TYPE_APP = 1;
+    private static final Object SHAPE = new Object();
+    private static final Object SUBTITLE = new Object();
+    private static final Object ICON = new Object();
 
     interface Listener {
         void onAppClick(AppEntry entry);
@@ -43,6 +46,7 @@ final class AppListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     private final List<CharSequence> mFilterLabels;
     private final List<AppEntry> mItems = new ArrayList<>();
 
+    private RecyclerView mRecyclerView;
     private boolean mFilterVisible;
     private int mSelectedFilter;
     private SettingsSpinnerAdapter<CharSequence> mSpinnerAdapter;
@@ -56,6 +60,85 @@ final class AppListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         mItems.clear();
         mItems.addAll(items);
         notifyDataSetChanged();
+    }
+
+    @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+        mRecyclerView = recyclerView;
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        mRecyclerView = null;
+    }
+
+    boolean isBound(AppEntry entry) {
+        final int position = indexOf(entry.packageName);
+        return position >= 0 && mRecyclerView != null
+                && mRecyclerView.findViewHolderForAdapterPosition(position) != null;
+    }
+
+    void setSelectedFilter(int filter) {
+        mSelectedFilter = filter;
+    }
+
+    void updateRow(AppEntry entry, boolean visible, boolean subtitleChanged) {
+        final int oldPosition = indexOf(entry.packageName);
+        if (oldPosition >= 0 && visible) {
+            if (subtitleChanged) {
+                notifyItemChanged(oldPosition, SUBTITLE);
+            }
+            return;
+        }
+        if (oldPosition < 0 && !visible) {
+            return;
+        }
+
+        final AppEntry oldFirst = mItems.isEmpty() ? null : mItems.get(0);
+        final AppEntry oldLast = mItems.isEmpty() ? null : mItems.get(mItems.size() - 1);
+        final boolean wasSingle = mItems.size() == 1;
+        final int offset = mFilterVisible ? 1 : 0;
+        if (visible) {
+            int position = 0;
+            while (position < mItems.size()
+                    && mItems.get(position).listPosition < entry.listPosition) {
+                position++;
+            }
+            mItems.add(position, entry);
+            notifyItemInserted(position + offset);
+        } else {
+            mItems.remove(oldPosition - offset);
+            notifyItemRemoved(oldPosition);
+        }
+        if (mItems.isEmpty()) {
+            return;
+        }
+
+        // An insert/remove moves holders without rebinding them. Affected
+        // surviving end rows need new corners even though their data is unchanged.
+        final AppEntry first = mItems.get(0);
+        final AppEntry last = mItems.get(mItems.size() - 1);
+        final boolean boundaryChanged = wasSingle != (mItems.size() == 1);
+        if (oldFirst != null && oldFirst != entry && (oldFirst != first || boundaryChanged)) {
+            notifyItemChanged(indexOf(oldFirst.packageName), SHAPE);
+        }
+        if (oldLast != null && oldLast != oldFirst && oldLast != entry
+                && (oldLast != last || boundaryChanged)) {
+            notifyItemChanged(indexOf(oldLast.packageName), SHAPE);
+        }
+        if (first != entry && first != oldFirst && first != oldLast) {
+            notifyItemChanged(offset, SHAPE);
+        }
+        if (last != entry && last != first && last != oldFirst && last != oldLast) {
+            notifyItemChanged(offset + mItems.size() - 1, SHAPE);
+        }
+    }
+
+    void iconLoaded(AppEntry entry) {
+        final int position = indexOf(entry.packageName);
+        if (position >= 0) {
+            notifyItemChanged(position, ICON);
+        }
     }
 
     void setFilterVisible(boolean visible) {
@@ -104,32 +187,64 @@ final class AppListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         final ViewHolder appHolder = (ViewHolder) holder;
         final int appPosition = position - (mFilterVisible ? 1 : 0);
         final AppEntry entry = mItems.get(appPosition);
-        final int background = mItems.size() == 1 ? R.drawable.bg_card
-                : appPosition == 0 ? R.drawable.bg_profile_top
-                : appPosition == mItems.size() - 1 ? R.drawable.bg_profile_bottom
-                : R.drawable.bg_profile_center;
-        appHolder.itemView.setBackgroundResource(background);
-        final int padding = appHolder.itemView.getResources().getDimensionPixelSize(
-                R.dimen.card_padding);
-        appHolder.itemView.setPaddingRelative(padding, padding, padding, padding);
+        bindShape(appHolder, appPosition);
         appHolder.label.setText(entry.label);
-        final CharSequence subtitle = buildSubtitle(appHolder.itemView, entry);
-        appHolder.subtitle.setText(subtitle);
-        appHolder.subtitle.setVisibility(TextUtils.isEmpty(subtitle) ? View.GONE : View.VISIBLE);
+        bindSubtitle(appHolder, entry);
+        bindIcon(appHolder, entry);
 
-        final Drawable icon = IconCache.get(appHolder.itemView.getContext(), entry.packageName);
-        if (icon != null) {
-            appHolder.icon.setImageDrawable(icon);
-        } else {
-            appHolder.icon.setImageDrawable(IconCache.getDefault(appHolder.itemView.getContext()));
-            mListener.onIconNeeded(entry);
-        }
-
-        if (entry.overrideProfile == -1 && entry.stockGroup == null && !entry.policyRequested) {
+        if (entry.overrideProfile == -1 && entry.selectedProfile == -1
+                && !entry.policyRequested) {
             mListener.onPolicyNeeded(entry);
         }
 
         appHolder.itemView.setOnClickListener(v -> mListener.onAppClick(entry));
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position,
+            @NonNull List<Object> payloads) {
+        if (payloads.isEmpty() || !(holder instanceof ViewHolder)) {
+            onBindViewHolder(holder, position);
+            return;
+        }
+        final ViewHolder appHolder = (ViewHolder) holder;
+        final int appPosition = position - (mFilterVisible ? 1 : 0);
+        final AppEntry entry = mItems.get(appPosition);
+        if (payloads.contains(SHAPE)) {
+            bindShape(appHolder, appPosition);
+        }
+        if (payloads.contains(SUBTITLE)) {
+            bindSubtitle(appHolder, entry);
+        }
+        if (payloads.contains(ICON)) {
+            bindIcon(appHolder, entry);
+        }
+    }
+
+    private void bindShape(ViewHolder holder, int position) {
+        final int background = mItems.size() == 1 ? R.drawable.bg_card
+                : position == 0 ? R.drawable.bg_profile_top
+                : position == mItems.size() - 1 ? R.drawable.bg_profile_bottom
+                : R.drawable.bg_profile_center;
+        holder.itemView.setBackgroundResource(background);
+        final int padding = holder.itemView.getResources().getDimensionPixelSize(R.dimen.card_padding);
+        holder.itemView.setPaddingRelative(padding, padding, padding, padding);
+    }
+
+    private void bindSubtitle(ViewHolder holder, AppEntry entry) {
+        final CharSequence subtitle = buildSubtitle(holder.itemView, entry);
+        holder.subtitle.setText(subtitle);
+        holder.subtitle.setVisibility(TextUtils.isEmpty(subtitle) ? View.GONE : View.VISIBLE);
+    }
+
+    private void bindIcon(ViewHolder holder, AppEntry entry) {
+        final Drawable icon = IconCache.get(holder.itemView.getContext(), entry.packageName);
+        if (icon != null) {
+            holder.icon.setImageDrawable(icon);
+        } else {
+            holder.icon.setImageDrawable(IconCache.getDefault(holder.itemView.getContext()));
+            mListener.onIconNeeded(entry);
+        }
     }
 
     @Override
@@ -163,9 +278,7 @@ final class AppListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     private static CharSequence buildSubtitle(View view, AppEntry entry) {
-        final int profile = entry.overrideProfile != -1
-                ? entry.overrideProfile
-                : entry.selectedProfile;
+        final int profile = entry.displayProfile();
         if (profile == -1) {
             return "";
         }

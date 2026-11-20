@@ -10,10 +10,12 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 
+import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import me.sandai.dashpower.IDashThermalService;
+import me.sandai.dashpower.ThermalServiceContract;
 
 /**
  * Async client for the dash_thermal binder service. All binder traffic runs on a
@@ -21,20 +23,11 @@ import me.sandai.dashpower.IDashThermalService;
  */
 final class ThermalServiceClient {
 
-    static final String SERVICE_NAME = "dash_thermal";
-
-    static final String KEY_READY = "ready";
-    static final String KEY_ERROR = "error";
-    static final String KEY_OVERRIDES = "overrides";
-    static final String KEY_OVERRIDE_PROFILE = "overrideProfile";
-    static final String KEY_SELECTED_PROFILE = "selectedProfile";
-    static final String KEY_STOCK_GROUP = "stockGroup";
-
     private static final long RETRY_DELAY_MS = 3000;
 
     interface StateCallback {
         /** Called on the main thread. {@code state} is null when unavailable. */
-        void onState(boolean available, Bundle state);
+        void onState(IBinder binder, Bundle state);
     }
 
     interface PolicyCallback {
@@ -50,18 +43,41 @@ final class ThermalServiceClient {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-    private IDashThermalService mService;
+    // Only the executor touches the registered connection. Every death callback
+    // carries its own identity, even if a binder is resolved again.
+    private Connection mConnection;
+
+    // Lifecycle and callback delivery are confined to the main thread.
     private boolean mStarted;
     private boolean mRetryScheduled;
-    // Lifecycle and callback delivery are confined to the main thread.
-    private boolean mClosed;
+    private volatile boolean mClosed;
+    private int mSession;
     private StateCallback mStateCallback;
 
-    private final IBinder.DeathRecipient mDeathRecipient = () -> postCallback(() -> {
-        mService = null;
-        notifyUnavailable();
-        scheduleRetry();
-    });
+    private final class Connection implements IBinder.DeathRecipient {
+        final IDashThermalService service;
+        final IBinder binder;
+        int apiVersion;
+
+        Connection(IBinder binder) {
+            this.binder = binder;
+            service = IDashThermalService.Stub.asInterface(binder);
+        }
+
+        @Override
+        public void binderDied() {
+            postCallback(() -> {
+                final int session = mSession;
+                mExecutor.execute(() -> {
+                    if (mConnection != this) {
+                        return;
+                    }
+                    clearConnection();
+                    publishState(session, null, null);
+                });
+            });
+        }
+    }
 
     private final Runnable mRetryTask = () -> {
         mRetryScheduled = false;
@@ -77,66 +93,105 @@ final class ThermalServiceClient {
     }
 
     void stop() {
+        mSession++;
         mStarted = false;
         mStateCallback = null;
-        mHandler.removeCallbacks(mRetryTask);
-        mRetryScheduled = false;
+        cancelRetry();
     }
 
     void shutdown() {
         mClosed = true;
         stop();
+        mExecutor.execute(this::clearConnection);
         mExecutor.shutdown();
     }
 
-    /** Re-resolves the service if needed and fetches getState() in the background. */
+    private void clearConnection() {
+        if (mConnection == null) {
+            return;
+        }
+        final Connection old = mConnection;
+        mConnection = null;
+        try {
+            old.binder.unlinkToDeath(old, 0);
+        } catch (NoSuchElementException e) {
+            // Binder already removed the registration on death.
+        }
+    }
+
+    private Connection connect() throws RemoteException {
+        if (mConnection != null && mConnection.binder.isBinderAlive()) {
+            return mConnection;
+        }
+        clearConnection();
+        if (mClosed) {
+            return null;
+        }
+        final IBinder binder = ServiceManager.checkService(ThermalServiceContract.SERVICE_NAME);
+        if (binder == null || mClosed) {
+            return null;
+        }
+        final Connection connection = new Connection(binder);
+        binder.linkToDeath(connection, 0);
+        mConnection = connection;
+        if (mClosed) {
+            clearConnection();
+            return null;
+        }
+        return connection;
+    }
+
+    /** Read scheduling settings, retaining compatibility with pre-v4 services. */
     void refresh() {
+        if (!mStarted) {
+            return;
+        }
+        final int session = mSession;
         mExecutor.execute(() -> {
-            IDashThermalService service = mService;
-            if (service == null) {
-                final IBinder binder = ServiceManager.checkService(SERVICE_NAME);
-                if (binder != null) {
-                    try {
-                        binder.linkToDeath(mDeathRecipient, 0);
-                        service = IDashThermalService.Stub.asInterface(binder);
-                        mService = service;
-                    } catch (RemoteException e) {
-                        service = null;
+            if (mClosed) {
+                return;
+            }
+            try {
+                final Connection connection = connect();
+                if (connection != null) {
+                    if (connection.apiVersion == 0) {
+                        connection.apiVersion = connection.service.getApiVersion();
+                    }
+                    final Bundle state = connection.apiVersion >= 4
+                            ? connection.service.getSchedulingState(mUserId)
+                            : connection.service.getState(mUserId);
+                    if (state != null && state.getBoolean(ThermalServiceContract.KEY_READY)) {
+                        publishState(session, connection.binder, state);
+                        return;
                     }
                 }
-            }
-            if (service == null) {
-                postCallback(() -> {
-                    notifyUnavailable();
-                    scheduleRetry();
-                });
-                return;
-            }
-            final Bundle state;
-            try {
-                state = service.getState(mUserId);
             } catch (RemoteException | RuntimeException e) {
-                postCallback(() -> {
-                    notifyUnavailable();
-                    scheduleRetry();
-                });
+                // Report unavailable; a failed v4 read must not masquerade as legacy.
+            }
+            publishState(session, null, null);
+        });
+    }
+
+    private void publishState(int session, IBinder binder, Bundle state) {
+        postCallback(() -> {
+            if (!mStarted || mSession != session) {
                 return;
             }
-            final boolean ready = state != null && state.getBoolean(KEY_READY, false);
-            postCallback(() -> {
-                if (mStateCallback != null) {
-                    mStateCallback.onState(ready, ready ? state : null);
-                }
-                if (!ready) {
-                    scheduleRetry();
-                }
-            });
+            if (binder == null) {
+                scheduleRetry();
+            } else {
+                cancelRetry();
+            }
+            mStateCallback.onState(binder, state);
         });
     }
 
     void getAppPolicy(String packageName, PolicyCallback callback) {
         mExecutor.execute(() -> {
-            final IDashThermalService service = mService;
+            if (mClosed) {
+                return;
+            }
+            final IDashThermalService service = mConnection == null ? null : mConnection.service;
             if (service == null) {
                 postCallback(callback::onError);
                 return;
@@ -152,7 +207,7 @@ final class ThermalServiceClient {
 
     void setAppProfile(String packageName, int profileId, OpCallback callback) {
         mExecutor.execute(() -> {
-            final IDashThermalService service = mService;
+            final IDashThermalService service = mConnection == null ? null : mConnection.service;
             boolean success = false;
             if (service != null) {
                 try {
@@ -175,10 +230,9 @@ final class ThermalServiceClient {
         });
     }
 
-    private void notifyUnavailable() {
-        if (mStateCallback != null) {
-            mStateCallback.onState(false, null);
-        }
+    private void cancelRetry() {
+        mHandler.removeCallbacks(mRetryTask);
+        mRetryScheduled = false;
     }
 
     private void scheduleRetry() {
