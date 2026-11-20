@@ -83,16 +83,25 @@ final class MtkPowerClient implements PowerPolicy.Transport {
         return token;
     }
 
+    // connect() has not called any vendor resource method when this exception is raised.
+    static final class RequestNotSentException extends RemoteException {
+        RequestNotSentException(String message) { super(message); }
+    }
+
     private IMtkPowerService connect() throws RemoteException {
         if (service != null && !service.asBinder().isBinderAlive()) {
             disconnected(service);
-            throw new RemoteException("MTK power restarted; discard this event");
+            throw new RequestNotSentException("MTK power restarted; discard this event");
         }
         if (service == null) {
             final IBinder binder = ServiceManager.checkService(NAME);
-            if (binder == null) throw new RemoteException("MTK power service unavailable");
+            if (binder == null) throw new RequestNotSentException("MTK power service unavailable");
             final IMtkPowerService owner = IMtkPowerService.Stub.asInterface(binder);
-            binder.linkToDeath(() -> worker.post(() -> disconnected(owner)), 0);
+            try {
+                binder.linkToDeath(() -> worker.post(() -> disconnected(owner)), 0);
+            } catch (RemoteException e) {
+                throw new RequestNotSentException("Cannot watch MTK power service: " + e);
+            }
             service = owner;
         }
         return service;

@@ -46,6 +46,11 @@ final class ThermalRequestState {
         return running() && (force || requested != target);
     }
 
+    /** A write may have changed the node despite an I/O failure; do not deduplicate it. */
+    void failed(long writeEpoch) {
+        if (epoch == writeEpoch) requested = -1;
+    }
+
     /** afterSample must be a fresh native sample, not the pre-write token. */
     boolean submitted(long writeEpoch, int target, long afterSample) {
         observe(afterSample);

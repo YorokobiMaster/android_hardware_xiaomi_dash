@@ -3,6 +3,7 @@
  */
 package me.sandai.dashpower;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
 /** Worker-owned game/camera frame policies with bounded, PID-directed requests. */
@@ -11,6 +12,7 @@ final class AppModePolicy {
     static final int CAMERA_HINT = 51;
     static final int LEASE_MS = 30_000;
     static final int RENEW_MS = 15_000;
+    private static final int SERVICE_RETRY_MS = 1000;
 
     interface Transport {
         int acquire(int hint, int pid, int durationMs) throws Exception;
@@ -25,6 +27,7 @@ final class AppModePolicy {
     private long expires;
     private long renewAt;
     private long settleUntil;
+    private long serviceRetryAt;
     private String error = "";
 
     AppModePolicy(Transport transport, LongSupplier clock) {
@@ -55,6 +58,10 @@ final class AppModePolicy {
 
     /** Returns when the worker must re-query current foreground state. */
     long update(int targetHint, int targetPid) {
+        return update(targetHint, targetPid, () -> true);
+    }
+
+    long update(int targetHint, int targetPid, BooleanSupplier current) {
         if (targetHint == 0 || targetPid <= 0) {
             targetHint = 0;
             targetPid = 0;
@@ -83,7 +90,16 @@ final class AppModePolicy {
                 error = "";
                 return 0;
             }
-            int acquired = transport.acquire(targetHint, targetPid, LEASE_MS);
+            if (!current.getAsBoolean()) return 0;
+            if (now < serviceRetryAt) return serviceRetryAt - now;
+            int acquired;
+            try {
+                acquired = transport.acquire(targetHint, targetPid, LEASE_MS);
+            } catch (MtkPowerClient.RequestNotSentException e) {
+                error = e.toString();
+                serviceRetryAt = clock.getAsLong() + SERVICE_RETRY_MS;
+                return SERVICE_RETRY_MS;
+            }
             if (acquired <= 0) throw new IllegalStateException("App mode rejected");
             token = acquired;
             pid = targetPid;
@@ -110,6 +126,11 @@ final class AppModePolicy {
         settleUntil = clock.getAsLong() + LEASE_MS;
         error = "MTK power disconnected";
     }
+
+    long activeUntil() { return token == 0 ? 0 : expires; }
+    int activePid() { return pid; }
+    int activeHint() { return hint; }
+    long settlingUntil() { return settleUntil; }
 
     int requestedPid() { return token != 0 && clock.getAsLong() < expires ? pid : 0; }
     int requestedHint() { return requestedPid() != 0 ? hint : 0; }

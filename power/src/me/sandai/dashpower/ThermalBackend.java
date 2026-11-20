@@ -60,11 +60,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
 
 /** Configuration and request state are guarded by this; queries/sysfs use the thermal worker. */
 final class ThermalBackend extends IDashThermalService.Stub {
     private static final String TAG = "DashThermal";
+    private static final int WRITE_RETRY_MS = 1000;
     private static final File NODE = new File("/sys/class/thermal/thermal_message/sconfig");
     private static final File LOW_TEMP_CHARGE =
             new File("/sys/class/power_supply/battery/extreme_cold_chg");
@@ -90,6 +92,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
     private final AtomicBoolean lifecycleCheckQueued = new AtomicBoolean();
     private final AtomicLong generation = new AtomicLong();
     private final Runnable refresh = this::recompute;
+    private final Runnable writeRetry = this::retryFailedWrite;
     private final Set<String> unavailableCameras = new HashSet<>();
     private final UEventObserver powerSupplyObserver = new UEventObserver() {
         @Override public void onUEvent(UEventObserver.UEvent event) { changed(); }
@@ -112,6 +115,8 @@ final class ThermalBackend extends IDashThermalService.Stub {
     private volatile int currentUser;
     private volatile boolean ready;
     private boolean forceNextRequest;
+    private boolean writeRetryConsumed;
+    private PowerState powerState;
     private String lifecycleError = "not sampled";
     private String watcherError = "not started";
     private String cameraWatcherError = "not started";
@@ -138,6 +143,31 @@ final class ThermalBackend extends IDashThermalService.Stub {
             copy.performanceMode = performanceMode;
             copy.overrides.putAll(overrides);
             return copy;
+        }
+    }
+
+    // Policies belong to the worker. Binder diagnostics only see committed, immutable snapshots.
+    private static final class PowerState {
+        final long gpuUntil;
+        final int gpuProfile;
+        final boolean gpuRestorePending;
+        final String gpuError;
+        final long appUntil;
+        final long appSettlingUntil;
+        final int appHint;
+        final int appPid;
+        final String appError;
+
+        PowerState(GamingPowerPolicy gpu, AppModePolicy app) {
+            gpuUntil = gpu.activeUntil();
+            gpuProfile = gpu.activeProfile();
+            gpuRestorePending = gpu.restorePending();
+            gpuError = gpu.error();
+            appUntil = app.activeUntil();
+            appSettlingUntil = app.settlingUntil();
+            appHint = app.activeHint();
+            appPid = app.activePid();
+            appError = app.error();
         }
     }
 
@@ -169,16 +199,14 @@ final class ThermalBackend extends IDashThermalService.Stub {
                 return power.releaseResources(token);
             }
         }, SystemClock::uptimeMillis);
+        powerState = new PowerState(gamingPower, appMode);
         this.stores = stores;
         users = context.getSystemService(UserManager.class);
     }
 
     void start() {
         worker.post(() -> {
-            synchronized (this) {
-                updateGaming(0);
-                updateAppMode(0, 0);
-            }
+            updatePower(0, 0, 0, () -> true);
             appList.start();
             thermalNotifier.start();
             LocalServices.getService(ActivityTaskManagerInternal.class)
@@ -263,7 +291,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
                 synchronized (this) {
                     // Request normal before tracking tasks, if the daemon is running.
                     ready = true;
-                    writeProfile(0, true);
+                    requestProfile(0, true);
                 }
                 changed();
             } catch (Exception e) {
@@ -290,6 +318,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
     private void recompute() {
         if (!ready) return;
         long observed = generation.get();
+        BooleanSupplier current = () -> observed == generation.get();
         int gamingProfile = 0;
         int appPid = 0;
         int appHint = 0;
@@ -324,14 +353,35 @@ final class ThermalBackend extends IDashThermalService.Stub {
             boolean sampledOffHook = sampleOffHook(eventFailures);
             boolean sampledLowTemp = readEventFlag(LOW_TEMP_CHARGE, eventFailures);
             boolean sampledReverse = readEventFlag(REVERSE_CHARGE, eventFailures);
+            ApplicationInfo metadata = null;
+            if (appUser >= 0) {
+                try {
+                    metadata = context.getPackageManager().getApplicationInfoAsUser(pkg, 0, appUser);
+                } catch (PackageManager.NameNotFoundException e) {
+                    appendEventFailure(eventFailures, "app removed", e);
+                    appUser = -1;
+                    pkg = "";
+                    why = "no-focused-app";
+                } catch (RuntimeException e) {
+                    appendEventFailure(eventFailures, "app metadata", e);
+                    // Classification is only needed for frame mode. Keep normal thermal policy
+                    // for the app if focus still matches; never act on a superseded foreground.
+                    if (!stillFocused(appUser, focused)) {
+                        appUser = -1;
+                        pkg = "";
+                        why = "no-focused-app";
+                    }
+                }
+            }
             synchronized (this) {
-                if (observed != generation.get()) return;
+                if (!current.getAsBoolean()) return;
                 int target = 0;
                 int selectedScenario = 0;
-                if (!config(user).enabled) {
+                boolean userEnabled = config(user).enabled;
+                Config appConfig = userEnabled && appUser >= 0 ? config(appUser) : null;
+                if (!userEnabled) {
                     why = "disabled";
-                } else if (appUser >= 0) {
-                    Config appConfig = config(appUser);
+                } else if (appConfig != null) {
                     if (!appConfig.enabled) {
                         why = "profile-disabled";
                     } else {
@@ -375,16 +425,17 @@ final class ThermalBackend extends IDashThermalService.Stub {
                 eventError = eventFailures.toString();
                 boolean force = forceNextRequest;
                 forceNextRequest = false;
-                writeProfile(target, force);
-                if (appUser >= 0 && config(user).enabled && config(appUser).enabled
+                if (!requestProfile(target, force)) return;
+                if (appConfig != null && appConfig.enabled
                         && requests.requested() == target && requests.running()) {
-                    ApplicationInfo app = context.getPackageManager()
-                            .getApplicationInfoAsUser(pkg, 0, appUser);
-                    appHint = AppModePolicy.select(app.category == ApplicationInfo.CATEGORY_GAME,
-                            defaultProfile(pkg, false), config(appUser).overrides.getOrDefault(
-                                    pkg, ThermalProfiles.AUTO));
-                    if (appHint != 0) appPid = appList.resumedPid(focused, app.uid);
                     gamingProfile = GamingPowerPolicy.level(target);
+                    if (metadata != null) {
+                        appHint = AppModePolicy.select(
+                                metadata.category == ApplicationInfo.CATEGORY_GAME,
+                                defaultProfile(pkg, false),
+                                appConfig.overrides.getOrDefault(pkg, ThermalProfiles.AUTO));
+                        if (appHint != 0) appPid = appList.resumedPid(focused, metadata.uid);
+                    }
                 }
                 error = "";
             }
@@ -392,53 +443,94 @@ final class ThermalBackend extends IDashThermalService.Stub {
             gamingProfile = 0;
             appPid = 0;
             appHint = 0;
-            fail(e);
-        } finally {
             synchronized (this) {
-                // A superseded foreground snapshot must not release the current profile.
-                if (observed == generation.get()) updateGaming(gamingProfile);
-                if (observed == generation.get()) updateAppMode(appHint, appPid);
+                if (current.getAsBoolean()) fail(e);
             }
+        } finally {
+            updatePower(gamingProfile, appHint, appPid, current);
         }
     }
 
-    private void updateGaming(int profile) {
-        worker.removeCallbacks(gamingRefresh);
-        long delay = gamingPower.update(profile);
-        if (delay > 0) worker.postDelayed(gamingRefresh, delay);
+    private boolean stillFocused(int user, ComponentName component) {
+        try {
+            for (ActivityManager.RunningTaskInfo task : ActivityTaskManager.getInstance()
+                    .getTasks(1, false, false, Display.DEFAULT_DISPLAY)) {
+                if (isForegroundTask(task) && task.userId == user
+                        && component.equals(task.topActivity)) return true;
+            }
+        } catch (RuntimeException e) {
+            Slog.w(TAG, "Cannot verify current thermal foreground", e);
+        }
+        return false;
+    }
+
+    private void updatePower(int profile, int hint, int pid, BooleanSupplier current) {
+        // Serialize resource releases/acquires on the worker, never under the configuration lock.
+        // Each policy rechecks generation before acquire if release or preparation took time.
+        if (current.getAsBoolean()) {
+            worker.removeCallbacks(gamingRefresh);
+            long delay = gamingPower.update(profile, current);
+            if (delay > 0) worker.postDelayed(gamingRefresh, delay);
+        }
+        if (current.getAsBoolean()) {
+            worker.removeCallbacks(appModeRefresh);
+            long delay = appMode.update(hint, pid, current);
+            if (delay > 0) worker.postDelayed(appModeRefresh, delay);
+        }
+        publishPowerState();
+    }
+
+    private synchronized void publishPowerState() {
+        powerState = new PowerState(gamingPower, appMode);
     }
 
     private void refreshGaming() {
-        if (ready) {
-            recompute();
-        } else {
-            synchronized (this) { updateGaming(0); }
-        }
-    }
-
-    private void updateAppMode(int hint, int pid) {
-        worker.removeCallbacks(appModeRefresh);
-        long delay = appMode.update(hint, pid);
-        if (delay > 0) worker.postDelayed(appModeRefresh, delay);
+        if (ready) recompute();
+        else updatePower(0, 0, 0, () -> true);
     }
 
     private void refreshAppMode() {
-        if (ready) {
-            recompute();
-        } else {
-            synchronized (this) { updateAppMode(0, 0); }
-        }
+        if (ready) recompute();
+        else updatePower(0, 0, 0, () -> true);
     }
 
     private void powerDisconnected() {
         Slog.w(TAG, "MTK power disconnected");
-        synchronized (this) {
-            appMode.disconnected();
-            updateAppMode(0, 0);
-            gamingPower.disconnected();
-            updateGaming(0);
+        appMode.disconnected();
+        gamingPower.disconnected();
+        publishPowerState();
+        // connect() can discover a dead owner during an update: re-query without re-entering it.
+        changed();
+    }
+
+    // Only a failed sconfig write consumes this one-shot retry. Normal fallback does not rearm it.
+    private boolean requestProfile(int target, boolean force) {
+        try {
+            writeProfile(target, force);
+        } catch (IOException e) {
+            fail(e);
+            if (requests.running() && !writeRetryConsumed) {
+                writeRetryConsumed = true;
+                worker.postDelayed(writeRetry, WRITE_RETRY_MS);
+            }
+            return false;
         }
-        changed(); // Re-query current foreground state, rather than replaying an old request.
+        if (requests.running() && requests.requested() == target) resetWriteRetry();
+        return true;
+    }
+
+    private void retryFailedWrite() {
+        synchronized (this) {
+            sampleLifecycle();
+            if (!requests.running() || !writeRetryConsumed) return;
+            forceNextRequest = true;
+        }
+        recompute();
+    }
+
+    private void resetWriteRetry() {
+        worker.removeCallbacks(writeRetry);
+        writeRetryConsumed = false;
     }
 
     private synchronized void fail(Exception e) {
@@ -543,6 +635,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
     }
 
     private void lifecycleChanged() {
+        resetWriteRetry();
         forceNextRequest = false;
         for (Runnable retry : retries) {
             if (retry != null) worker.removeCallbacks(retry);
@@ -574,13 +667,16 @@ final class ThermalBackend extends IDashThermalService.Stub {
         }
     }
 
-    private void writeProfile(int target, boolean force) throws Exception {
+    private void writeProfile(int target, boolean force) throws IOException {
         sampleLifecycle();
         if (!requests.shouldSubmit(target, force)) return;
         long epoch = requests.epoch();
         long afterSample;
         try (FileOutputStream out = new FileOutputStream(NODE)) {
             out.write((target + "\n").getBytes(StandardCharsets.US_ASCII));
+        } catch (IOException e) {
+            requests.failed(epoch);
+            throw e;
         } finally {
             afterSample = sampleLifecycle();
         }
@@ -756,20 +852,26 @@ final class ThermalBackend extends IDashThermalService.Stub {
             out.putString("appStateError", appList.error());
             out.putLong("thermalNotifySentCycles", thermalNotifier.sentCycles());
             out.putString("thermalNotifyError", thermalNotifier.error());
-            out.putBoolean("gptRequested", gamingPower.requested());
-            out.putBoolean("gptRestorePending", gamingPower.restorePending());
-            out.putString("gptError", gamingPower.error());
-            out.putInt("gamingPowerProfile", gamingPower.profile());
-            out.putInt("powerProfile", gamingPower.profile());
-            out.putInt("dramFloorOpp", gamingPower.dramFloorOpp());
-            out.putInt("appModeHint", appMode.requestedHint());
-            out.putInt("appModePid", appMode.requestedPid());
-            out.putInt("gameModePid", appMode.requestedHint() == AppModePolicy.GAME_HINT
-                    ? appMode.requestedPid() : 0);
-            out.putBoolean("appModeSettling", appMode.settling());
-            out.putString("appModeError", appMode.error());
-            out.putBoolean("gameModeSettling", appMode.settling());
-            out.putString("gameModeError", appMode.error());
+            long now = SystemClock.uptimeMillis();
+            boolean gpuRequested = now < powerState.gpuUntil;
+            int gpuProfile = gpuRequested ? powerState.gpuProfile : 0;
+            boolean appRequested = now < powerState.appUntil;
+            int appHint = appRequested ? powerState.appHint : 0;
+            int appPid = appRequested ? powerState.appPid : 0;
+            boolean appSettling = now < powerState.appSettlingUntil;
+            out.putBoolean("gptRequested", gpuRequested);
+            out.putBoolean("gptRestorePending", powerState.gpuRestorePending);
+            out.putString("gptError", powerState.gpuError);
+            out.putInt("gamingPowerProfile", gpuProfile);
+            out.putInt("powerProfile", gpuProfile);
+            out.putInt("dramFloorOpp", ThermalProfiles.dramFloorOpp(gpuProfile));
+            out.putInt("appModeHint", appHint);
+            out.putInt("appModePid", appPid);
+            out.putInt("gameModePid", appHint == AppModePolicy.GAME_HINT ? appPid : 0);
+            out.putBoolean("appModeSettling", appSettling);
+            out.putString("appModeError", powerState.appError);
+            out.putBoolean("gameModeSettling", appSettling);
+            out.putString("gameModeError", powerState.appError);
             out.putString("persistenceError", persistenceErrors.getOrDefault(user, ""));
             out.putInt("currentUserId", currentUser);
             out.putInt("foregroundUserId", foregroundUser == user ? user : -1);

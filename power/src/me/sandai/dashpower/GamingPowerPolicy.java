@@ -3,6 +3,7 @@
  */
 package me.sandai.dashpower;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
 /** Worker-owned GPU and bandwidth leases for gaming and evaluation profiles. */
@@ -33,6 +34,7 @@ final class GamingPowerPolicy {
     private final LongSupplier clock;
     private boolean loaded;
     private String saved;
+    private boolean discardUnsentRecord;
     private int token;
     private int appliedProfile;
     private long expires;
@@ -61,10 +63,18 @@ final class GamingPowerPolicy {
 
     /** Returns the next delay, or zero when no further worker callback is needed. */
     long update(int profile) {
+        return update(profile, () -> true);
+    }
+
+    long update(int profile, BooleanSupplier current) {
         profile = level(profile);
         boolean allowed = profile != 0;
         long now = clock.getAsLong();
         try {
+            if (discardUnsentRecord) {
+                state.clear();
+                discardUnsentRecord = false;
+            }
             if (!loaded) {
                 saved = state.load();
                 loaded = true;
@@ -95,17 +105,42 @@ final class GamingPowerPolicy {
                 return Math.max(1, settleUntil - clock.getAsLong());
             }
             token = 0;
-            if (saved == null) {
+            if (!current.getAsBoolean()) return 0;
+            boolean preparing = saved == null;
+            if (preparing) {
+                String captured;
                 try {
-                    saved = state.capture();
+                    captured = state.capture();
                 } catch (Exception e) {
                     // No resource request has been sent; GPU startup placeholders may clear soon.
                     error = e.toString();
                     return 100;
                 }
-                state.save(saved); // Durable before any request can change the node.
+                try {
+                    state.save(captured); // Durable before any request can change the node.
+                } catch (ThermalConfigStore.PublishedWriteException e) {
+                    error = e.toString();
+                    // The record is visible, but this request cannot have reached the HAL.
+                    discardPreparedRecord();
+                    return LEASE_MS;
+                } catch (Exception e) {
+                    error = e.toString();
+                    return LEASE_MS;
+                }
+                saved = captured;
             }
-            int acquired = transport.acquire(LEASE_MS, resources(profile));
+            if (!current.getAsBoolean()) {
+                if (preparing) discardPreparedRecord();
+                return 0;
+            }
+            int acquired;
+            try {
+                acquired = transport.acquire(LEASE_MS, resources(profile));
+            } catch (MtkPowerClient.RequestNotSentException e) {
+                error = e.toString();
+                if (preparing) discardPreparedRecord();
+                return LEASE_MS;
+            }
             if (acquired <= 0) throw new IllegalStateException("Profile resources rejected");
             token = acquired;
             appliedProfile = profile;
@@ -121,8 +156,16 @@ final class GamingPowerPolicy {
             // A failed IPC may have applied a request. Let its finite timeout finish before
             // restoring, so its later unset cannot overwrite the restored thresholds.
             settleUntil = clock.getAsLong() + LEASE_MS;
-            return !loaded || saved != null || allowed ? LEASE_MS : 0;
+            return !loaded || discardUnsentRecord || saved != null || allowed ? LEASE_MS : 0;
         }
+    }
+
+    private void discardPreparedRecord() throws Exception {
+        saved = null;
+        settleUntil = 0;
+        discardUnsentRecord = true;
+        state.clear();
+        discardUnsentRecord = false;
     }
 
     void disconnected() {
@@ -130,6 +173,9 @@ final class GamingPowerPolicy {
         if (saved != null) settleUntil = clock.getAsLong() + LEASE_MS;
         error = "MTK power disconnected";
     }
+
+    long activeUntil() { return token == 0 ? 0 : expires; }
+    int activeProfile() { return appliedProfile; }
 
     boolean requested() { return token != 0 && clock.getAsLong() < expires; }
     int profile() { return requested() ? appliedProfile : 0; }

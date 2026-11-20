@@ -52,7 +52,7 @@ class ThermalConfigStore {
             published = true;
             forceDirectory(directory);
         } catch (IOException e) {
-            if (published) throw uncertain(e);
+            if (published) throw new PublishedWriteException(uncertain(e));
             // An incomplete .new is never authoritative; recover() discards it on the next call.
             throw e;
         }
@@ -86,6 +86,13 @@ class ThermalConfigStore {
             return true;
         } catch (NoSuchFileException e) {
             return false;
+        }
+    }
+
+    /** The bytes supplied to write() are visible, but their durability was not confirmed. */
+    static final class PublishedWriteException extends IOException {
+        PublishedWriteException(IOException cause) {
+            super(cause.getMessage(), cause);
         }
     }
 
