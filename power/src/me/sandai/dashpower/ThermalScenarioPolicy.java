@@ -163,6 +163,8 @@ final class ThermalScenarioPolicy {
 
     private static int mapToProfile(int scenario, boolean videoChatEnabled) {
         if (scenario == 0) return 0;
+        // Classic Xiaomi shit: OS4.0.4.0 gives Douyin (28) the same thermal settings as video (11).
+        if (scenario == 28) return 11;
         int high = scenario / 100;
         int low = scenario % 100;
         switch (low) {
