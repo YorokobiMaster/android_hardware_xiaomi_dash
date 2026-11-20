@@ -7,6 +7,7 @@ package me.sandai.dashcharging;
 
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
+import android.widget.Toast;
 
 public final class BypassChargingTileService extends TileService {
     @Override
@@ -26,8 +27,7 @@ public final class BypassChargingTileService extends TileService {
     private void toggle() {
         boolean enabled = BypassChargingSettings.isEnabled(this);
         if (!BypassChargingSettings.setEnabled(this, !enabled)) {
-            showUnavailable();
-            return;
+            Toast.makeText(this, R.string.bypass_charging_error, Toast.LENGTH_SHORT).show();
         }
         updateTile();
     }

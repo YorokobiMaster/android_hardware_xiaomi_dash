@@ -4,15 +4,15 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources>
-    <string name="app_name">旁路充电</string>
-    <string name="bypass_charging_title">旁路充电</string>
-    <string name="bypass_charging_summary" formatted="false">限制电池充电以降低发热，仅在电量 40%–90% 且有线充电时生效</string>
-    <string name="bypass_charging_error">无法更新旁路充电状态</string>
+    <string name="app_name">智能充电</string>
+    <string name="bypass_charging_title">智能充电</string>
+    <string name="bypass_charging_summary" formatted="false">有线充电且电量为 40%–90% 时，根据使用场景和温度调节充电电流，帮助减少发热。</string>
+    <string name="bypass_charging_error">无法更新智能充电状态</string>
     <string name="fast_reverse_charging_title">有线反向快充</string>
     <string name="fast_reverse_charging_summary">以最高 27W 为连接的设备反向充电，断开后自动关闭</string>
     <string name="fast_reverse_charging_unavailable">在本机为连接的设备供电时可用</string>
     <string name="fast_reverse_charging_error">无法更新反向快充状态，请确认已连接设备且电量充足</string>
-    <string name="tile_label">旁路充电</string>
+    <string name="tile_label">智能充电</string>
     <string name="tile_enabled">已开启</string>
     <string name="tile_disabled">已关闭</string>
     <string name="tile_unavailable">不可用</string>

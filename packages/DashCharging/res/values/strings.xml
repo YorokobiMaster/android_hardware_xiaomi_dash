@@ -4,15 +4,15 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources>
-    <string name="app_name">Bypass charging</string>
-    <string name="bypass_charging_title">Bypass charging</string>
-    <string name="bypass_charging_summary" formatted="false">Limits battery charging to reduce heat; active only during wired charging at 40–90%</string>
-    <string name="bypass_charging_error">Couldn’t update bypass charging</string>
+    <string name="app_name">Smart Charging</string>
+    <string name="bypass_charging_title">Smart Charging</string>
+    <string name="bypass_charging_summary" formatted="false">Adjusts charging current for your activity and device temperature to help reduce heat during wired charging at 40–90%.</string>
+    <string name="bypass_charging_error">Couldn’t update Smart Charging</string>
     <string name="fast_reverse_charging_title">Fast reverse charging</string>
     <string name="fast_reverse_charging_summary" formatted="false">Charge the connected device at up to 27 W; turns off when disconnected</string>
     <string name="fast_reverse_charging_unavailable">Available while this phone is charging a connected device</string>
     <string name="fast_reverse_charging_error">Couldn’t update fast reverse charging; the connected device or battery level may not allow it</string>
-    <string name="tile_label">Bypass charging</string>
+    <string name="tile_label">Smart Charging</string>
     <string name="tile_enabled">On</string>
     <string name="tile_disabled">Off</string>
     <string name="tile_unavailable">Unavailable</string>

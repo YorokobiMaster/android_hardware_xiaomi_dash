@@ -47,14 +47,16 @@ final class MiChargeClient {
     }
 
     static boolean setBypassRequested(boolean enabled) {
-        if (!setPath(SMART_CHG_PATH,
-                enabled ? BYPASS_ENABLED_VALUE : BYPASS_DISABLED_VALUE)) {
+        Integer status = writePath(SMART_CHG_PATH,
+                enabled ? BYPASS_ENABLED_VALUE : BYPASS_DISABLED_VALUE);
+        if (status == null) {
             return false;
         }
 
         Boolean requested = isBypassRequested();
         if (requested == null || requested != enabled) {
-            Log.e(TAG, "smart_chg readback did not match requested state");
+            Log.e(TAG, "smart_chg readback " + requested + " did not match " + enabled
+                    + " (MiCharge write status: " + status + ")");
             return false;
         }
         return true;
@@ -90,10 +92,14 @@ final class MiChargeClient {
     }
 
     private static boolean setPath(String path, String value) {
+        return writePath(path, value) != null;
+    }
+
+    private static Integer writePath(String path, String value) {
         IBinder service = ServiceManager.checkService(SERVICE_NAME);
         if (service == null) {
-            Log.e(TAG, "MiCharge service is unavailable");
-            return false;
+            Log.e(TAG, "MiCharge service is unavailable for write to " + path);
+            return null;
         }
 
         Parcel data = Parcel.obtain();
@@ -104,19 +110,18 @@ final class MiChargeClient {
             data.writeString(value);
             if (!service.transact(TRANSACTION_SET_MI_CHARGE_PATH, data, reply,
                     FLAG_PRIVATE_VENDOR)) {
-                Log.e(TAG, "MiCharge setMiChargePath transaction is unavailable");
-                return false;
+                Log.e(TAG, "MiCharge setMiChargePath transaction is unavailable for " + path);
+                return null;
             }
             reply.readException();
-            reply.readInt();
+            return reply.readInt();
         } catch (RemoteException | RuntimeException e) {
             Log.e(TAG, "Unable to write " + path, e);
-            return false;
+            return null;
         } finally {
             reply.recycle();
             data.recycle();
         }
-        return true;
     }
 
     private static String getPath(String path) {

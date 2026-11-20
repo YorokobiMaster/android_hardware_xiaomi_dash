@@ -36,8 +36,10 @@ final class BypassChargingSettings {
             return false;
         }
         if (!Settings.Global.putInt(context.getContentResolver(), ENABLED, enabled ? 1 : 0)) {
-            Log.e(TAG, "Unable to persist bypass charging state");
-            MiChargeClient.setBypassRequested(!enabled);
+            Log.e(TAG, "Unable to persist Smart Charging setting " + ENABLED);
+            if (!MiChargeClient.setBypassRequested(!enabled)) {
+                Log.e(TAG, "Unable to roll back Smart Charging after persistence failed");
+            }
             return false;
         }
         requestTileUpdate(context);
@@ -47,7 +49,7 @@ final class BypassChargingSettings {
     static void restore(Context context) {
         boolean enabled = isDesired(context);
         if (!MiChargeClient.setBypassRequested(enabled)) {
-            Log.e(TAG, "Unable to restore bypass charging state after boot");
+            Log.e(TAG, "Unable to restore Smart Charging after boot");
         }
         requestTileUpdate(context);
     }
