@@ -8,8 +8,6 @@ package me.sandai.dashled;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Handler;
-import android.os.Looper;
 
 import java.util.Arrays;
 
@@ -28,12 +26,8 @@ public final class LedPulseReceiver extends BroadcastReceiver {
     private static final int DEFAULT_BRIGHTNESS = 255;
     private static final int DEFAULT_DURATION_MS = 300;
     private static final int MAX_DURATION_MS = 10_000;
-    private static final Handler sHandler = new Handler(Looper.getMainLooper());
-
-    private static LedArbiter sArbiter;
-    private static LedArbiter.Session sSession;
-    private static Runnable sStop;
-    private static PendingResult sPendingResult;
+    private static final TimedLedPulse sPulse =
+            new TimedLedPulse(IDashLedManager.CATEGORY_THIRD_PARTY);
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -56,44 +50,10 @@ public final class LedPulseReceiver extends BroadcastReceiver {
             }
         }
 
-        PendingResult pendingResult = goAsync();
-        synchronized (LedPulseReceiver.class) {
-            finishPulseLocked();
-
-            sArbiter = LedCore.get(context).arbiter();
-            sSession = sArbiter.acquire(IDashLedManager.CATEGORY_THIRD_PARTY);
-            sArbiter.setFrame(sSession, colors, brightness);
-            sPendingResult = pendingResult;
-
-            LedArbiter.Session session = sSession;
-            sStop = () -> {
-                synchronized (LedPulseReceiver.class) {
-                    if (sSession == session) {
-                        finishPulseLocked();
-                    }
-                }
-            };
-            sHandler.postDelayed(sStop, durationMs);
-        }
+        sPulse.show(context, colors, brightness, durationMs, goAsync());
     }
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
-    }
-
-    private static void finishPulseLocked() {
-        if (sStop != null) {
-            sHandler.removeCallbacks(sStop);
-            sStop = null;
-        }
-        if (sSession != null) {
-            sArbiter.release(sSession);
-            sSession = null;
-            sArbiter = null;
-        }
-        if (sPendingResult != null) {
-            sPendingResult.finish();
-            sPendingResult = null;
-        }
     }
 }
