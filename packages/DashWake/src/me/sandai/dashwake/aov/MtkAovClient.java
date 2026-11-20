@@ -43,8 +43,6 @@ final class MtkAovClient implements AutoCloseable {
     private static final int SENSOR_HEIGHT = 480;
     private static final int FRAME_RATE = 10;
     private static final int DETECTION_MODE_FACE_AND_GAZE = 6;
-    private static final int START_ATTEMPTS = 6;
-    private static final long START_RETRY_DELAY_MS = 100;
 
     private final Handler mWorker;
     private final Listener mListener;
@@ -63,67 +61,47 @@ final class MtkAovClient implements AutoCloseable {
         mXmParam1 = xmParam1;
     }
 
-    boolean start() {
+    boolean connect() throws RemoteException {
         ensureWorkerThread();
-        if (mStarted) {
-            return true;
-        }
-
         IBinder service = ServiceManager.checkService(SERVICE_NAME);
         if (service == null) {
             Log.w(TAG, "IAovService is not registered");
             return false;
         }
 
-        try {
-            IBinder.DeathRecipient deathRecipient = () ->
-                    mWorker.post(() -> handleServiceDeath(service));
-            service.linkToDeath(deathRecipient, 0);
-            mService = service;
-            mDeathRecipient = deathRecipient;
-            int connectResult = transactInt(service, TRANSACTION_CONNECT, data ->
-                    data.writeStrongBinder(mCallback.asBinder()));
-            if (connectResult != 0) {
-                Log.e(TAG, "IAovService connect failed: " + connectResult);
-                close();
-                return false;
-            }
-            mConnected = true;
-
-            AovInitParams params = new AovInitParams();
-            params.sensorId = SENSOR_ID_FRONT;
-            params.sensorWidth = SENSOR_WIDTH;
-            params.sensorHeight = SENSOR_HEIGHT;
-            params.frameRate = FRAME_RATE;
-            params.detectionMode = DETECTION_MODE_FACE_AND_GAZE;
-            params.debugDisableCallback = false;
-            params.xmParam1 = mXmParam1; // 1 = stock locked/screen-off route, 0 = unlocked route.
-
-            int result = -1;
-            for (int attempt = 0; attempt < START_ATTEMPTS && result != 0; attempt++) {
-                result = transactInt(service, TRANSACTION_START, data ->
-                        data.writeTypedObject(params, 0));
-                if (result != 0 && attempt + 1 < START_ATTEMPTS) {
-                    Thread.sleep(START_RETRY_DELAY_MS);
-                }
-            }
-            if (result != 0) {
-                Log.e(TAG, "IAovService start failed: " + result);
-                close();
-                return false;
-            }
-
-            mStarted = true;
-            Log.i(TAG, "AOV gaze detection started");
-            return true;
-        } catch (RemoteException | InterruptedException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            Log.e(TAG, "Unable to start AOV", e);
-            close();
+        IBinder.DeathRecipient deathRecipient = () ->
+                mWorker.post(() -> handleServiceDeath(service));
+        service.linkToDeath(deathRecipient, 0);
+        mService = service;
+        mDeathRecipient = deathRecipient;
+        int result = transactInt(service, TRANSACTION_CONNECT, data ->
+                data.writeStrongBinder(mCallback.asBinder()));
+        if (result != 0) {
+            Log.e(TAG, "IAovService connect failed: " + result);
             return false;
         }
+        mConnected = true;
+        return true;
+    }
+
+    int start() throws RemoteException {
+        ensureWorkerThread();
+        AovInitParams params = new AovInitParams();
+        params.sensorId = SENSOR_ID_FRONT;
+        params.sensorWidth = SENSOR_WIDTH;
+        params.sensorHeight = SENSOR_HEIGHT;
+        params.frameRate = FRAME_RATE;
+        params.detectionMode = DETECTION_MODE_FACE_AND_GAZE;
+        params.debugDisableCallback = false;
+        params.xmParam1 = mXmParam1; // 1 = stock locked/screen-off route, 0 = unlocked route.
+
+        int result = transactInt(mService, TRANSACTION_START, data ->
+                data.writeTypedObject(params, 0));
+        if (result == 0) {
+            mStarted = true;
+            Log.i(TAG, "AOV gaze detection started");
+        }
+        return result;
     }
 
     @Override
@@ -147,14 +125,14 @@ final class MtkAovClient implements AutoCloseable {
         if (wasStarted) {
             try {
                 transactVoid(service, TRANSACTION_STOP, null);
-            } catch (RemoteException e) {
+            } catch (RemoteException | RuntimeException e) {
                 Log.w(TAG, "IAovService stop failed", e);
             }
         }
         if (wasConnected) {
             try {
                 transactVoid(service, TRANSACTION_DISCONNECT, null);
-            } catch (RemoteException e) {
+            } catch (RemoteException | RuntimeException e) {
                 Log.w(TAG, "IAovService disconnect failed", e);
             }
         }
@@ -186,7 +164,6 @@ final class MtkAovClient implements AutoCloseable {
         if (!mStarted) {
             return;
         }
-        Log.i(TAG, "AOV gaze detected");
         mListener.onPresenceDetected(this);
     }
 

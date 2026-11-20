@@ -135,12 +135,27 @@ public final class DashAovBridgeService extends Service {
                 if (mClientCallback != null) mWorker.postDelayed(mRetry, RETRY_DELAY_MS);
             }
         }, 1);
-        if (client.start()) {
+        if (startAov(client)) {
             mAovClient = client;
         } else {
             client.close();
             mWorker.postDelayed(mRetry, RETRY_DELAY_MS);
         }
+    }
+
+    private boolean startAov(MtkAovClient client) {
+        try {
+            if (!client.connect()) return false;
+            for (int attempt = 0; attempt < 6; attempt++) {
+                if (client.start() == 0) return true;
+                if (attempt < 5) Thread.sleep(100);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (RemoteException | RuntimeException e) {
+            Log.w(TAG, "Unable to start AOV gaze detection", e);
+        }
+        return false;
     }
 
     private void deliverPresence() {
