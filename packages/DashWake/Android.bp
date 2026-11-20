@@ -7,7 +7,7 @@ package {
 
 android_app {
     name: "DashWake",
-    srcs: ["src/**/*.java", "src/**/*.aidl"],
+    srcs: ["src/**/*.java"],
     static_libs: ["SettingsLibTile"],
     resource_dirs: ["res"],
     platform_apis: true,

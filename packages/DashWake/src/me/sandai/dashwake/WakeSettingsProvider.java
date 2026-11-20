@@ -21,10 +21,6 @@ public final class WakeSettingsProvider extends EntriesProvider {
         return List.of(
                 new WakeSwitchController(WakeSettings.PICKUP_ENABLED,
                         R.string.pickup_wake_title, R.string.pickup_wake_summary, -10),
-                // Gaze-to-wake is parked until its product value and false-wake behaviour
-                // are established on-device. Keep the implementation available for later work.
-                // new WakeSwitchController(WakeSettings.GAZE_ENABLED,
-                //         R.string.gaze_wake_title, R.string.gaze_wake_summary, -11),
                 new WakeSwitchController(WakeSettings.PUTDOWN_ENABLED,
                         R.string.putdown_sleep_title, R.string.putdown_sleep_summary, -12));
     }

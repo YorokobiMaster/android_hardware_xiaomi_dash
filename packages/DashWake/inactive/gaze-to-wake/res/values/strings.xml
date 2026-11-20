@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="gaze_wake_title">Gaze to wake</string>
+    <string name="gaze_wake_summary">Wake the lock screen when you look at the phone</string>
+</resources>

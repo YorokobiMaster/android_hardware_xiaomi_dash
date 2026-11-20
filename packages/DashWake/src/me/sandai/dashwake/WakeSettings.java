@@ -10,7 +10,6 @@ import android.provider.Settings;
 
 final class WakeSettings {
     static final String PICKUP_ENABLED = "dash_pickup_wake_enabled";
-    static final String GAZE_ENABLED = "dash_gaze_wake_enabled";
     static final String PUTDOWN_ENABLED = "dash_put_down_sleep_enabled";
 
     private WakeSettings() {}
@@ -25,8 +24,6 @@ final class WakeSettings {
 
     static void migrate(ContentResolver resolver, int userId) {
         migrateKey(resolver, userId, Settings.Secure.DOZE_PICK_UP_GESTURE, PICKUP_ENABLED);
-        // Gaze-to-wake is not currently exposed. Do not create or migrate its setting.
-        // migrateKey(resolver, userId, "dash_smart_aod_enabled", GAZE_ENABLED);
     }
 
     private static void migrateKey(ContentResolver resolver, int userId,
