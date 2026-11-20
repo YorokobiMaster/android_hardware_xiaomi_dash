@@ -41,11 +41,6 @@
     <string name="profile_enhanced_summary">Higher CPU limits and reduced early GPU throttling</string>
     <string name="profile_extreme_summary">Higher memory bandwidth floor and more sustained GPU headroom, with increased power use</string>
     <string name="profile_evaluation_summary">Relaxed GPU throttling and a higher memory bandwidth floor, with increased power use</string>
-    <string name="profile_navigation_summary">Thermal policy for extended navigation</string>
-    <string name="profile_camera_summary">Camera thermal policy and frame scheduling</string>
-    <string name="profile_transfer_summary">Thermal policy for device transfer and data migration</string>
-    <string name="profile_arvr_summary">Thermal policy for AR and VR workloads</string>
-    <string name="profile_demo_summary">Thermal policy for continuous demonstrations</string>
 
     <string name="profile_unknown">Unknown policy (%1$d)</string>
 

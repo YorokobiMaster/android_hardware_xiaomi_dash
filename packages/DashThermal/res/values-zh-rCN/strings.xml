@@ -41,11 +41,6 @@
     <string name="profile_enhanced_summary">提高 CPU 上限，减少 GPU 提前降频</string>
     <string name="profile_extreme_summary">提高内存带宽下限，放宽持续 GPU 温控区间，耗电更高</string>
     <string name="profile_evaluation_summary">放宽 GPU 提前降频并提高内存带宽下限，可能增加耗电</string>
-    <string name="profile_navigation_summary">面向长时间导航的温控策略</string>
-    <string name="profile_camera_summary">相机温控与帧调度策略</string>
-    <string name="profile_transfer_summary">面向换机与数据迁移的温控策略</string>
-    <string name="profile_arvr_summary">面向 AR 与 VR 负载的温控策略</string>
-    <string name="profile_demo_summary">面向持续演示场景的温控策略</string>
 
     <string name="profile_unknown">未知策略（%1$d）</string>
 

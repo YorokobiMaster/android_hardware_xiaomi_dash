@@ -59,16 +59,6 @@ final class ThermalProfiles {
                 return R.string.profile_extreme_summary;
             case 6:
                 return R.string.profile_evaluation_summary;
-            case 10:
-                return R.string.profile_navigation_summary;
-            case 15:
-                return R.string.profile_camera_summary;
-            case 1:
-                return R.string.profile_transfer_summary;
-            case 9:
-                return R.string.profile_arvr_summary;
-            case 12:
-                return R.string.profile_demo_summary;
             default:
                 return 0;
         }
