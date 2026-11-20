@@ -777,8 +777,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
             out.putBoolean("offHook", offHook);
             out.putBoolean("lowTempCharge", lowTempCharge);
             out.putBoolean("reverseCharge", reverseCharge);
-            out.putIntArray("selectableProfiles",
-                    new int[] {-1, 0, 1, 6, 7, 9, 10, 11, 12, 15, 19, 20, 25});
+            out.putIntArray("selectableProfiles", ThermalProfiles.selectableIds());
             putOverrides(out, config);
             return out;
         } catch (Exception e) {
@@ -995,8 +994,8 @@ final class ThermalBackend extends IDashThermalService.Stub {
                         + "enable USER true|false | resync\n"
                         + "perf-acquire DURATION_MS RESOURCE VALUE [RESOURCE VALUE...]\n"
                         + "perf-release TOKEN (debug only; requests expire automatically)\n"
-                        + "ID: -1 auto, 0 normal, 7 class0, 11 video, 19 mgame, "
-                        + "20 yuanshen, 25 xingtie. Writes acknowledge saved config, not actuation.");
+                        + "ID: " + ThermalProfiles.help()
+                        + ". Writes acknowledge saved config, not actuation.");
             }
         }.exec(this, in, out, err, args, callback, receiver);
     }

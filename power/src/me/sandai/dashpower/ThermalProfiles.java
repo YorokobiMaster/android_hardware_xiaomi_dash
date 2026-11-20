@@ -3,14 +3,60 @@
  */
 package me.sandai.dashpower;
 
+import java.util.StringJoiner;
+
 /** Manual thermal profile ids accepted by the backend. */
 final class ThermalProfiles {
     static final int AUTO = -1;
 
+    private enum WritableProfile {
+        AUTOMATIC(AUTO, "auto (clears override)"),
+        NORMAL(0, "normal"),
+        TRANSFER(1),
+        EVALUATION(6),
+        CLASS0(7, "class0"),
+        ARVR(9),
+        NAVIGATION(10),
+        VIDEO(11, "video"),
+        DEMO(12),
+        CAMERA(15),
+        MGAME(19, "mgame"),
+        YUANSHEN(20, "yuanshen"),
+        XINGTIE(25, "xingtie");
+
+        final int id;
+        final String name;
+
+        WritableProfile(int id) { this(id, null); }
+
+        WritableProfile(int id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    private static final WritableProfile[] SELECTABLE = WritableProfile.values();
+
     static boolean selectable(int id) {
-        return id == AUTO || id == 0 || id == 1 || id == 6 || id == 7 || id == 9
-                || id == 10 || id == 11 || id == 12 || id == 15 || id == 19
-                || id == 20 || id == 25;
+        for (WritableProfile profile : SELECTABLE) {
+            if (profile.id == id) return true;
+        }
+        return false;
+    }
+
+    static int[] selectableIds() {
+        int[] ids = new int[SELECTABLE.length];
+        for (int i = 0; i < ids.length; i++) ids[i] = SELECTABLE[i].id;
+        return ids;
+    }
+
+    static String help() {
+        StringJoiner ids = new StringJoiner(", ");
+        for (WritableProfile profile : SELECTABLE) {
+            ids.add(profile.name == null ? Integer.toString(profile.id)
+                    : profile.id + " " + profile.name);
+        }
+        return ids.toString();
     }
 
     static int frameHint(int profile) {
