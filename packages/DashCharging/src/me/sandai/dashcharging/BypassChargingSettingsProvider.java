@@ -5,6 +5,8 @@
 
 package me.sandai.dashcharging;
 
+import static com.android.settingslib.drawer.TileUtils.META_DATA_PREFERENCE_GROUP_KEY;
+
 import android.os.Bundle;
 
 import com.android.settingslib.drawer.DynamicSummary;
@@ -22,8 +24,21 @@ public final class BypassChargingSettingsProvider extends EntriesProvider {
         return Arrays.asList(new BypassChargingController(), new ReverseChargingController());
     }
 
-    private final class BypassChargingController extends EntryController
+    private abstract static class ChargingSwitchController extends EntryController
             implements ProviderSwitch {
+        final MetaData chargingEntry(int order, int title, int summary) {
+            return new MetaData("com.android.settings.category.ia.battery") {
+                @Override
+                protected Bundle build() {
+                    Bundle bundle = super.build();
+                    bundle.putString(META_DATA_PREFERENCE_GROUP_KEY, "charging_category");
+                    return bundle;
+                }
+            }.setOrder(order).setTitle(title).setSummary(summary);
+        }
+    }
+
+    private final class BypassChargingController extends ChargingSwitchController {
         @Override
         public String getKey() {
             return BypassChargingSettings.ENABLED;
@@ -31,17 +46,8 @@ public final class BypassChargingSettingsProvider extends EntriesProvider {
 
         @Override
         protected MetaData getMetaData() {
-            return new MetaData("com.android.settings.category.ia.battery") {
-                @Override
-                protected Bundle build() {
-                    Bundle bundle = super.build();
-                    bundle.putString("com.android.settings.group_key", "charging_category");
-                    return bundle;
-                }
-            }
-                    .setOrder(-10)
-                    .setTitle(R.string.bypass_charging_title)
-                    .setSummary(R.string.bypass_charging_summary);
+            return chargingEntry(-10, R.string.bypass_charging_title,
+                    R.string.bypass_charging_summary);
         }
 
         @Override
@@ -60,8 +66,8 @@ public final class BypassChargingSettingsProvider extends EntriesProvider {
         }
     }
 
-    private final class ReverseChargingController extends EntryController
-            implements ProviderSwitch, DynamicSummary {
+    private final class ReverseChargingController extends ChargingSwitchController
+            implements DynamicSummary {
         @Override
         public String getKey() {
             return ReverseChargingSettings.KEY;
@@ -69,17 +75,8 @@ public final class BypassChargingSettingsProvider extends EntriesProvider {
 
         @Override
         protected MetaData getMetaData() {
-            return new MetaData("com.android.settings.category.ia.battery") {
-                @Override
-                protected Bundle build() {
-                    Bundle bundle = super.build();
-                    bundle.putString("com.android.settings.group_key", "charging_category");
-                    return bundle;
-                }
-            }
-                    .setOrder(-11)
-                    .setTitle(R.string.fast_reverse_charging_title)
-                    .setSummary(R.string.fast_reverse_charging_summary);
+            return chargingEntry(-11, R.string.fast_reverse_charging_title,
+                    R.string.fast_reverse_charging_summary);
         }
 
         @Override
