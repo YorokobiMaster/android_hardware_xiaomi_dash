@@ -131,6 +131,14 @@ final class ThermalBackend extends IDashThermalService.Stub {
         boolean enabled = true;
         boolean performanceMode;
         final Map<String, Integer> overrides = new HashMap<>();
+
+        Config copy() {
+            Config copy = new Config();
+            copy.enabled = enabled;
+            copy.performanceMode = performanceMode;
+            copy.overrides.putAll(overrides);
+            return copy;
+        }
     }
 
     ThermalBackend(Context context, Handler worker) {
@@ -821,11 +829,8 @@ final class ThermalBackend extends IDashThermalService.Stub {
         try {
             if (users.getUserInfo(user) == null) throw new IllegalArgumentException("Unknown user");
             if (modeUser(user) != user) throw new IllegalArgumentException("Use parent user mode");
-            Config previous = config(user);
-            Config updated = new Config();
-            updated.enabled = previous.enabled;
+            Config updated = config(user).copy();
             updated.performanceMode = enabled;
-            updated.overrides.putAll(previous.overrides);
             save(user, updated);
             changed();
         } catch (Exception e) {
@@ -850,11 +855,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
         long identity = Binder.clearCallingIdentity();
         try {
             installed(user, pkg);
-            Config previous = config(user);
-            Config updated = new Config();
-            updated.enabled = previous.enabled;
-            updated.performanceMode = previous.performanceMode;
-            updated.overrides.putAll(previous.overrides);
+            Config updated = config(user).copy();
             if (id == ThermalProfiles.AUTO) updated.overrides.remove(pkg);
             else updated.overrides.put(pkg, id);
             save(user, updated);
@@ -871,10 +872,8 @@ final class ThermalBackend extends IDashThermalService.Stub {
         long identity = Binder.clearCallingIdentity();
         try {
             if (users.getUserInfo(user) == null) throw new IllegalArgumentException("Unknown user");
-            Config updated = new Config();
+            Config updated = config(user).copy();
             updated.enabled = enabled;
-            updated.performanceMode = config(user).performanceMode;
-            updated.overrides.putAll(config(user).overrides);
             save(user, updated);
             changed();
         } catch (Exception e) {
@@ -888,10 +887,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
         try {
             Config previous = config(user);
             if (!previous.overrides.containsKey(pkg)) return;
-            Config updated = new Config();
-            updated.enabled = previous.enabled;
-            updated.performanceMode = previous.performanceMode;
-            updated.overrides.putAll(previous.overrides);
+            Config updated = previous.copy();
             updated.overrides.remove(pkg);
             save(user, updated);
             changed();
