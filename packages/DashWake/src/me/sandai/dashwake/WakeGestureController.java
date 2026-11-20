@@ -36,7 +36,7 @@ final class WakeGestureController implements SensorEventListener {
     private final KeyguardManager mKeyguardManager;
     private final PocketController mPocketController;
     private boolean mPickupRegistered;
-    private boolean mWokeByPickup;
+    private int mPickupUser = UserHandle.USER_NULL;
 
     WakeGestureController(Context context, PocketController pocketController) {
         mContext = context;
@@ -67,20 +67,34 @@ final class WakeGestureController implements SensorEventListener {
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_USER_PRESENT);
         filter.addAction(Intent.ACTION_USER_SWITCHED);
-        mContext.registerReceiver(new BroadcastReceiver() {
+        filter.addAction(Intent.ACTION_USER_UNLOCKED);
+        mContext.registerReceiverAsUser(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())
-                        || Intent.ACTION_USER_PRESENT.equals(intent.getAction())) {
-                    mWokeByPickup = false;
-                } else if (Intent.ACTION_USER_SWITCHED.equals(intent.getAction())) {
-                    mWokeByPickup = false;
-                    WakeSettings.migrate(mContext.getContentResolver(),
-                            ActivityManager.getCurrentUser());
+                final int userId = ActivityManager.getCurrentUser();
+                switch (intent.getAction()) {
+                    case Intent.ACTION_USER_PRESENT:
+                        if (getSendingUserId() != userId) return;
+                        mPickupUser = UserHandle.USER_NULL;
+                        break;
+                    case Intent.ACTION_SCREEN_OFF:
+                        mPickupUser = UserHandle.USER_NULL;
+                        break;
+                    case Intent.ACTION_USER_SWITCHED:
+                        mPickupUser = UserHandle.USER_NULL;
+                        WakeSettings.migrate(mContext.getContentResolver(), userId);
+                        break;
+                    case Intent.ACTION_USER_UNLOCKED:
+                        if (intent.getIntExtra(Intent.EXTRA_USER_HANDLE, UserHandle.USER_NULL)
+                                != userId) return;
+                        WakeSettings.migrate(mContext.getContentResolver(), userId);
+                        break;
+                    default:
+                        break;
                 }
                 update();
             }
-        }, filter, Context.RECEIVER_EXPORTED);
+        }, UserHandle.ALL, filter, null, mHandler, Context.RECEIVER_EXPORTED);
         update();
     }
 
@@ -88,24 +102,26 @@ final class WakeGestureController implements SensorEventListener {
         return !mPowerManager.isInteractive();
     }
 
-    private boolean isPickupEnabled() {
+    private boolean isPickupEnabled(int userId) {
         return WakeSettings.isEnabled(mContext.getContentResolver(),
-                WakeSettings.PICKUP_ENABLED, ActivityManager.getCurrentUser());
+                WakeSettings.PICKUP_ENABLED, userId);
     }
 
-    private boolean isPutDownEnabled() {
+    private boolean isPutDownEnabled(int userId) {
         return WakeSettings.isEnabled(mContext.getContentResolver(),
-                WakeSettings.PUTDOWN_ENABLED, ActivityManager.getCurrentUser());
+                WakeSettings.PUTDOWN_ENABLED, userId);
     }
 
     // Stock registration window: listen while the screen is off so a lift can
     // wake, and after a pickup wake keep listening while the keyguard is still
     // up so a put-down can end the session. Unlocking unregisters the sensor.
     private boolean shouldListenPickup() {
+        final int userId = ActivityManager.getCurrentUser();
         if (canWake()) {
-            return isPickupEnabled();
+            return isPickupEnabled(userId);
         }
-        return mWokeByPickup && isPutDownEnabled() && mKeyguardManager.isKeyguardLocked();
+        return mPickupUser == userId && isPutDownEnabled(userId)
+                && mKeyguardManager.isKeyguardLocked();
     }
 
     private void update() {
@@ -126,13 +142,14 @@ final class WakeGestureController implements SensorEventListener {
         if (!mPickupRegistered || event.sensor != mPickupSensor || event.values.length == 0) {
             return;
         }
+        final int userId = ActivityManager.getCurrentUser();
         float value = event.values[0];
-        if (value == 1.0f && canWake() && isPickupEnabled()) {
-            wake("pickup");
-        } else if ((value == 2.0f || value == 0.0f) && mWokeByPickup && !canWake()
-                && isPutDownEnabled() && mKeyguardManager.isKeyguardLocked()) {
+        if (value == 1.0f && canWake() && isPickupEnabled(userId)) {
+            wakeFromPickup(userId);
+        } else if ((value == 2.0f || value == 0.0f) && mPickupUser == userId && !canWake()
+                && isPutDownEnabled(userId) && mKeyguardManager.isKeyguardLocked()) {
             Log.i(TAG, "Put down after pickup wake; going to sleep");
-            mWokeByPickup = false;
+            mPickupUser = UserHandle.USER_NULL;
             mPowerManager.goToSleep(SystemClock.uptimeMillis());
         }
     }
@@ -140,18 +157,16 @@ final class WakeGestureController implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
-    private void wake(String source) {
+    private void wakeFromPickup(int userId) {
         if (!canWake()) return;
         if (mPocketController.isInPocket()) {
-            Log.i(TAG, "Suppressing wake source=" + source + " while NonUI is active");
+            Log.i(TAG, "Suppressing wake source=pickup while NonUI is active");
             return;
         }
-        Log.i(TAG, "Wake source=" + source);
+        Log.i(TAG, "Wake source=pickup");
         mPowerManager.wakeUp(SystemClock.uptimeMillis(), PowerManager.WAKE_REASON_GESTURE,
-                "me.sandai.dashwake:" + source);
-        if ("pickup".equals(source)) {
-            mWokeByPickup = true;
-        }
+                "me.sandai.dashwake:pickup");
+        mPickupUser = userId;
         update();
     }
 }

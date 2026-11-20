@@ -43,7 +43,18 @@ public final class DashWakeApplication extends Application {
     private final BroadcastReceiver mUserReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            scheduleSync(intent.getAction());
+            final String action = intent.getAction();
+            if (Intent.ACTION_USER_UNLOCKED.equals(action)
+                    && intent.getIntExtra(Intent.EXTRA_USER_HANDLE, UserHandle.USER_NULL)
+                            != ActivityManager.getCurrentUser()) {
+                return;
+            }
+            if ((Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
+                    || Intent.ACTION_BOOT_COMPLETED.equals(action))
+                    && getSendingUserId() != UserHandle.USER_SYSTEM) {
+                return;
+            }
+            scheduleSync(action);
         }
     };
 
@@ -51,8 +62,11 @@ public final class DashWakeApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // The AOV worker shares this APK but must not start gesture listeners or touch I/O.
-        if (!getPackageName().equals(Application.getProcessName())) return;
+        // Only the system user's main process owns the device-wide sensors and touch controls.
+        if (getUserId() != UserHandle.USER_SYSTEM
+                || !getPackageName().equals(Application.getProcessName())) {
+            return;
+        }
         System.loadLibrary("dashwake_jni");
 
         HandlerThread handlerThread = new HandlerThread(TAG);
@@ -69,7 +83,9 @@ public final class DashWakeApplication extends Application {
         filter.addAction(Intent.ACTION_LOCKED_BOOT_COMPLETED);
         filter.addAction(Intent.ACTION_BOOT_COMPLETED);
         filter.addAction(Intent.ACTION_USER_SWITCHED);
-        registerReceiver(mUserReceiver, filter, Context.RECEIVER_EXPORTED);
+        filter.addAction(Intent.ACTION_USER_UNLOCKED);
+        registerReceiverAsUser(mUserReceiver, UserHandle.ALL, filter,
+                null, null, Context.RECEIVER_EXPORTED);
 
         scheduleSync("startup");
 
