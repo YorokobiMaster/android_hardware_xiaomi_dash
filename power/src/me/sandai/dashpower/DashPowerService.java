@@ -33,7 +33,7 @@ public final class DashPowerService extends SystemService {
                 new HandlerThread("DashThermal", Process.THREAD_PRIORITY_BACKGROUND);
         thermalThread.start();
         thermal = new ThermalBackend(getContext(), new Handler(thermalThread.getLooper()));
-        publishBinderService(ThermalBackend.SERVICE, thermal);
+        publishBinderService(ThermalServiceContract.SERVICE_NAME, thermal);
         final DevicePowerManagerInternal source =
                 LocalServices.getService(DevicePowerManagerInternal.class);
         if (source == null) {

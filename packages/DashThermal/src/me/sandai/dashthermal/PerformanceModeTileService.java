@@ -56,7 +56,7 @@ public final class PerformanceModeTileService extends TileService {
             try {
                 state = PerformanceModeClient.read();
                 if (toggle) {
-                    PerformanceModeClient.set(!state.getBoolean("performanceMode"));
+                    PerformanceModeClient.set(!PerformanceModeClient.isEnabled(state));
                     state = PerformanceModeClient.read();
                 }
             } catch (RemoteException | RuntimeException e) {
@@ -75,7 +75,7 @@ public final class PerformanceModeTileService extends TileService {
                 tile.setContentDescription(getString(R.string.performance_mode_title));
                 tile.setIcon(Icon.createWithResource(this, R.drawable.ic_performance_mode));
                 tile.setState(error || !PerformanceModeClient.available(result) ? Tile.STATE_UNAVAILABLE
-                        : result.getBoolean("performanceMode") ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+                        : PerformanceModeClient.isEnabled(result) ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
                 tile.updateTile();
             });
         });

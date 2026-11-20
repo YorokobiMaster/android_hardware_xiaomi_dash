@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 java_library {
     name: "dash-power",
-    srcs: ["src/**/*.java", "aidl/**/*.aidl"],
+    srcs: [
+        "src/**/*.java",
+        "aidl/**/*.aidl",
+        "contract/**/*.java",
+    ],
     aidl: { local_include_dirs: ["aidl"] },
     libs: ["services.core"],
     platform_apis: true,
@@ -20,10 +24,13 @@ cc_library_shared {
     system_ext_specific: true,
 }
 
-// Shared by the platform-signed Settings frontend; the server uses the same AIDL source.
+// Binder contract used by the platform-signed thermal clients.
 java_library {
     name: "dash-thermal-client",
-    srcs: ["aidl/me/sandai/dashpower/IDashThermalService.aidl"],
+    srcs: [
+        "aidl/me/sandai/dashpower/IDashThermalService.aidl",
+        "contract/**/*.java",
+    ],
     platform_apis: true,
 }
 

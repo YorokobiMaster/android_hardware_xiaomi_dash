@@ -37,7 +37,7 @@ public final class PerformanceModeProvider extends EntriesProvider {
 
         @Override public boolean isSwitchChecked() {
             try {
-                return PerformanceModeClient.read().getBoolean("performanceMode");
+                return PerformanceModeClient.isEnabled(PerformanceModeClient.read());
             } catch (RemoteException | RuntimeException e) {
                 Log.w("DashPerformance", "Cannot read mode", e);
                 return false;

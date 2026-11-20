@@ -7,7 +7,7 @@ import android.os.Bundle;
 
 /** Platform-signed Settings client API. -1 means automatic, never a sysfs request. */
 interface IDashThermalService {
-    const int API_VERSION = 3;
+    const int API_VERSION = 4;
     const String PERFORMANCE_STATE_URI = "content://me.sandai.dashthermal.performance/isChecked/performance_mode";
     int getApiVersion();
     Bundle getState(int userId);
@@ -18,4 +18,7 @@ interface IDashThermalService {
     void setPerformanceMode(int userId, boolean enabled);
     // Stock camera compatibility input. Only the platform-signed bridge may call this.
     void notifyCameraRecordState(boolean recording, int quality, int fps);
+    // Version 4 settings reads. Existing diagnostic and mutation transactions are unchanged.
+    Bundle getSchedulingState(int userId);
+    Bundle getPerformanceModeState(int userId);
 }

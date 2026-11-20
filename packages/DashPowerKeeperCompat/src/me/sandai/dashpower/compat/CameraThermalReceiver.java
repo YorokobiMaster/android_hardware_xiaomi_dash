@@ -11,11 +11,11 @@ import android.os.ServiceManager;
 import android.util.Slog;
 
 import me.sandai.dashpower.IDashThermalService;
+import me.sandai.dashpower.ThermalServiceContract;
 
 /** Receives stock camera broadcasts; the manifest requires its signature permission. */
 public final class CameraThermalReceiver extends BroadcastReceiver {
     private static final String TAG = "DashPowerKeeperCompat";
-    private static final String SERVICE = "dash_thermal";
 
     @Override public void onReceive(Context context, Intent intent) {
         if (intent == null) return;
@@ -26,7 +26,7 @@ public final class CameraThermalReceiver extends BroadcastReceiver {
         else return;
 
         IDashThermalService service = IDashThermalService.Stub.asInterface(
-                ServiceManager.checkService(SERVICE));
+                ServiceManager.checkService(ThermalServiceContract.SERVICE_NAME));
         if (service == null) {
             Slog.w(TAG, "Thermal backend unavailable");
             return;

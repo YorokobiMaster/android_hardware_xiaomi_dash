@@ -3,6 +3,8 @@
  */
 package me.sandai.dashpower;
 
+import static me.sandai.dashpower.ThermalServiceContract.SERVICE_NAME;
+
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.ActivityTaskManager;
@@ -62,7 +64,6 @@ import java.util.function.IntFunction;
 
 /** Configuration and request state are guarded by this; queries/sysfs use the thermal worker. */
 final class ThermalBackend extends IDashThermalService.Stub {
-    static final String SERVICE = "dash_thermal";
     private static final String TAG = "DashThermal";
     private static final File NODE = new File("/sys/class/thermal/thermal_message/sconfig");
     private static final File LOW_TEMP_CHARGE =
@@ -646,14 +647,14 @@ final class ThermalBackend extends IDashThermalService.Stub {
     private void enforce(int user) {
         int uid = Binder.getCallingUid();
         if (!(Build.IS_DEBUGGABLE && (uid == Process.ROOT_UID || uid == Process.SHELL_UID))) {
-            context.enforceCallingOrSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS, SERVICE);
+            context.enforceCallingOrSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS, SERVICE_NAME);
             if (context.getPackageManager().checkSignatures(Process.SYSTEM_UID, uid)
                     != PackageManager.SIGNATURE_MATCH) {
                 throw new SecurityException("Platform signature required");
             }
             if (UserHandle.getUserId(uid) != user) {
                 context.enforceCallingOrSelfPermission(
-                        Manifest.permission.INTERACT_ACROSS_USERS_FULL, SERVICE);
+                        Manifest.permission.INTERACT_ACROSS_USERS_FULL, SERVICE_NAME);
             }
         }
         if (user < 0) throw new IllegalArgumentException("Concrete userId required");
@@ -685,6 +686,49 @@ final class ThermalBackend extends IDashThermalService.Stub {
         return API_VERSION;
     }
 
+    // The compact reads share permissions, config and effective mode with full diagnostics.
+    @Override public synchronized Bundle getSchedulingState(int user) {
+        return getSettingsState(user, true);
+    }
+
+    @Override public synchronized Bundle getPerformanceModeState(int user) {
+        return getSettingsState(user, false);
+    }
+
+    private Bundle getSettingsState(int user, boolean scheduling) {
+        enforce(user);
+        long identity = Binder.clearCallingIdentity();
+        try {
+            if (users.getUserInfo(user) == null) throw new IllegalArgumentException("Unknown user");
+            Config config = config(user);
+            Bundle out = new Bundle();
+            putModeState(out, user, config);
+            if (scheduling) {
+                out.putString(ThermalServiceContract.KEY_ERROR, error);
+                out.putString("persistenceError", persistenceErrors.getOrDefault(user, ""));
+                putOverrides(out, config);
+            }
+            return out;
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    private void putModeState(Bundle out, int user, Config config) throws Exception {
+        out.putBoolean(ThermalServiceContract.KEY_READY, ready);
+        out.putBoolean(ThermalServiceContract.KEY_ENABLED, config.enabled);
+        out.putBoolean(ThermalServiceContract.KEY_PERFORMANCE_MODE,
+                config(modeUser(user)).performanceMode);
+    }
+
+    private static void putOverrides(Bundle out, Config config) {
+        Bundle overrides = new Bundle();
+        config.overrides.forEach(overrides::putInt);
+        out.putBundle(ThermalServiceContract.KEY_OVERRIDES, overrides);
+    }
+
     @Override public synchronized Bundle getState(int user) {
         enforce(user);
         long identity = Binder.clearCallingIdentity();
@@ -693,7 +737,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
             Config config = config(user);
             Bundle out = new Bundle();
             out.putInt("version", API_VERSION);
-            out.putBoolean("ready", ready);
+            putModeState(out, user, config);
             out.putBoolean("daemonRunning", requests.running());
             out.putLong("requestEpoch", requests.epoch());
             out.putString("lifecycleError", lifecycleError);
@@ -719,15 +763,13 @@ final class ThermalBackend extends IDashThermalService.Stub {
             out.putBoolean("gameModeSettling", appMode.settling());
             out.putString("gameModeError", appMode.error());
             out.putString("persistenceError", persistenceErrors.getOrDefault(user, ""));
-            out.putBoolean("enabled", config.enabled);
-            out.putBoolean("performanceMode", config(modeUser(user)).performanceMode);
             out.putInt("currentUserId", currentUser);
             out.putInt("foregroundUserId", foregroundUser == user ? user : -1);
             out.putString("foregroundPackage", foregroundUser == user ? foregroundPackage : "");
             out.putInt("requestedProfile", requests.requested());
             out.putBoolean("appliedConfirmed", false);
             out.putString("reason", reason);
-            out.putString("error", error);
+            out.putString(ThermalServiceContract.KEY_ERROR, error);
             out.putString("eventError", eventError);
             out.putInt("scenarioId", scenario);
             out.putInt("cameraElement", cameraElement);
@@ -737,9 +779,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
             out.putBoolean("reverseCharge", reverseCharge);
             out.putIntArray("selectableProfiles",
                     new int[] {-1, 0, 1, 6, 7, 9, 10, 11, 12, 15, 19, 20, 25});
-            Bundle overrides = new Bundle();
-            config.overrides.forEach(overrides::putInt);
-            out.putBundle("overrides", overrides);
+            putOverrides(out, config);
             return out;
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -757,10 +797,11 @@ final class ThermalBackend extends IDashThermalService.Stub {
             int override = config.overrides.getOrDefault(pkg, ThermalProfiles.AUTO);
             Bundle out = new Bundle();
             out.putInt("defaultProfile", defaultProfile(pkg, config(modeUser(user)).performanceMode));
-            out.putInt("overrideProfile", override);
-            out.putInt("selectedProfile", override == ThermalProfiles.AUTO
+            out.putInt(ThermalServiceContract.KEY_OVERRIDE_PROFILE, override);
+            out.putInt(ThermalServiceContract.KEY_SELECTED_PROFILE, override == ThermalProfiles.AUTO
                     ? defaultProfile(pkg, config(modeUser(user)).performanceMode) : override);
-            out.putString("stockGroup", groups.getOrDefault(pkg, "unclassified"));
+            out.putString(ThermalServiceContract.KEY_STOCK_GROUP,
+                    groups.getOrDefault(pkg, "unclassified"));
             return out;
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -861,7 +902,7 @@ final class ThermalBackend extends IDashThermalService.Stub {
     }
 
     @Override protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        context.enforceCallingOrSelfPermission(Manifest.permission.DUMP, SERVICE);
+        context.enforceCallingOrSelfPermission(Manifest.permission.DUMP, SERVICE_NAME);
         pw.println(getState(currentUser));
     }
 
