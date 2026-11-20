@@ -12,7 +12,7 @@ using hardware::audio::core::VendorParameter;
 
 namespace {
 
-void appendParameter(const std::string& rawValue, std::vector<VendorParameter>* parameters) {
+void appendRawParameterAsId(const std::string& rawValue, std::vector<VendorParameter>* parameters) {
     if (!rawValue.empty()) {
         parameters->emplace_back(VendorParameter{.id = rawValue});
     }
@@ -31,22 +31,21 @@ ndk::ScopedAStatus DashAudioParameterParser::parseVendorParameterIds(
 
 ndk::ScopedAStatus DashAudioParameterParser::parseVendorParameters(
         const IHalAdapterVendorExtension::ParameterScope& /* scope */,
-        const std::string& rawKeysAndValues,
-        std::vector<VendorParameter>* syncParameters,
+        const std::string& rawKeysAndValues, std::vector<VendorParameter>* syncParameters,
         std::vector<VendorParameter>* /* asyncParameters */) {
-    appendParameter(rawKeysAndValues, syncParameters);
+    appendRawParameterAsId(rawKeysAndValues, syncParameters);
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus DashAudioParameterParser::parseBluetoothA2dpReconfigureOffload(
         const std::string& rawValue, std::vector<VendorParameter>* parameters) {
-    appendParameter(rawValue, parameters);
+    appendRawParameterAsId(rawValue, parameters);
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus DashAudioParameterParser::parseBluetoothLeReconfigureOffload(
         const std::string& rawValue, std::vector<VendorParameter>* parameters) {
-    appendParameter(rawValue, parameters);
+    appendRawParameterAsId(rawValue, parameters);
     return ndk::ScopedAStatus::ok();
 }
 
