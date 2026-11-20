@@ -5,7 +5,7 @@
 -->
 <resources>
     <string name="pickup_wake_title">抬起唤醒</string>
-    <string name="pickup_wake_summary">拿起手机时唤醒锁屏</string>
+    <string name="pickup_wake_summary">拿起手机时唤醒屏幕</string>
     <string name="putdown_sleep_title">放下熄屏</string>
     <string name="putdown_sleep_summary">抬起亮屏后未解锁，放下手机时熄灭屏幕</string>
 </resources>

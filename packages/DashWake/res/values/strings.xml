@@ -5,7 +5,7 @@
 -->
 <resources>
     <string name="pickup_wake_title">Lift to wake</string>
-    <string name="pickup_wake_summary">Wake the lock screen when you pick up the phone</string>
+    <string name="pickup_wake_summary">Wake the screen when you pick up the phone</string>
     <string name="putdown_sleep_title">Put down to sleep</string>
-    <string name="putdown_sleep_summary">Turn the screen off when you put the phone back down after a lift to wake</string>
+    <string name="putdown_sleep_summary">After lifting to wake, turn off the screen when you put the phone down while it is still locked</string>
 </resources>
