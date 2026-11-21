@@ -8,9 +8,10 @@ notifications temporarily take priority over third-party effects.
 
 The master switch controls all ring output. Notification alerts have a separate
 switch, seven default colors, and per-app switches for apps with launcher entries.
-New notifications play three breathing cycles across all four zones; ongoing
-notifications and DashLED's own notifications are ignored. A newer notification
-replaces the previous pulse. Xiaomi Camera countdown ticks temporarily take the
+New notifications and updates that can alert again play three breathing cycles
+across all four zones. Updates marked only-alert-once, ongoing notifications and
+DashLED's own notifications are ignored. The next pulse replaces the previous
+one. Xiaomi Camera countdown ticks temporarily take the
 higher-priority camera category and light all four zones white for 300 ms.
 Charging effects are not implemented as a built-in producer.
 

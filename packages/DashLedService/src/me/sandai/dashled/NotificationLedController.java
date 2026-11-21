@@ -12,7 +12,7 @@ import java.util.Arrays;
 
 import me.sandai.dashled.aidl.DashLedEffect;
 
-/** Built-in producer: short breathing pulse on all zones for new notifications. */
+/** Built-in producer: short breathing pulse on all zones for eligible notification posts. */
 public final class NotificationLedController {
 
     private static final int PERIOD_MS = 1500;
