@@ -6,8 +6,10 @@ import argparse
 import filecmp
 import fcntl
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -177,26 +179,53 @@ def export(out, dist, stage, core, config, bootstrap, official, system_dlkm):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--workspace", type=Path, required=True)
-    parser.add_argument("--profile", choices=["normal", "official"], required=True)
-    parser.add_argument("--system-dlkm", choices=["true", "false"], required=True)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--profile", choices=["normal", "official"])
+    parser.add_argument("--system-dlkm", choices=["true", "false"])
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--fetch-official", action="store_true",
+                        help="prepare the pinned official GKI cache without running Kleaf")
     args = parser.parse_args()
+    export_flags = ("profile", "system_dlkm", "out")
+    supplied = [getattr(args, flag) is not None for flag in export_flags]
+    if args.fetch_official:
+        if any(supplied):
+            parser.error("--fetch-official only takes --workspace")
+    elif not all(supplied):
+        missing = ["--" + flag.replace("_", "-") for flag, present in zip(export_flags, supplied)
+                   if not present]
+        parser.error("the following arguments are required: " + ", ".join(missing))
+
     workspace = args.workspace.resolve(strict=True)
-    out = args.out.resolve()
-    out.mkdir(parents=True, exist_ok=True)
     # Both ROMs reuse the same Bazel cache. Relaxed and strict actions can
     # publish to the same physical output paths, so snapshot before another
     # ROM's producer can switch the flags.
     lock = workspace / "out/bazel/dash-kernel.lock"
     lock.parent.mkdir(parents=True, exist_ok=True)
-    system_dlkm = args.system_dlkm == "true"
-    with lock.open("a") as fd, tempfile.TemporaryDirectory(dir=out, prefix=".kleaf-") as temp:
+    with lock.open("a") as fd:
         fcntl.flock(fd, fcntl.LOCK_EX)
-        stage = Path(temp)
-        dist = stage / "dist"
-        core, config, bootstrap = produce(dist, stage, workspace, args.profile, system_dlkm)
-        official = official_core(workspace) if args.profile == "official" else None
-        export(out, dist, stage, core, config, bootstrap, official, system_dlkm)
+        official = None
+        if args.fetch_official or args.profile == "official":
+            try:
+                official = official_core(workspace)
+            except (OSError, subprocess.CalledProcessError, ValueError) as error:
+                message = f"Could not prepare the official GKI cache: {error}"
+                if not args.fetch_official:
+                    prepare = shlex.join(["python3", sys.argv[0], "--workspace",
+                                          str(args.workspace), "--fetch-official"])
+                    message += f"\nPrepare it outside Ninja from the ROM source root:\n  {prepare}"
+                parser.exit(1, message + "\n")
+        if args.fetch_official:
+            print(f"Official GKI cache ready: {official}")
+            return
+
+        out = args.out.resolve()
+        out.mkdir(parents=True, exist_ok=True)
+        system_dlkm = args.system_dlkm == "true"
+        with tempfile.TemporaryDirectory(dir=out, prefix=".kleaf-") as temp:
+            stage = Path(temp)
+            dist = stage / "dist"
+            core, config, bootstrap = produce(dist, stage, workspace, args.profile, system_dlkm)
+            export(out, dist, stage, core, config, bootstrap, official, system_dlkm)
 
 
 if __name__ == "__main__":
