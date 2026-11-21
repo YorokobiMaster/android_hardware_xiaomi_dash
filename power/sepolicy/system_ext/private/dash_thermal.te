@@ -39,6 +39,11 @@ type mtk_hal_pq, domain;
 type thermal_core, domain;
 type thermal_manager, domain;
 
+# OS4's MTK camera reports the actual torch level to the thermal HAL.
+# Stock grants this node to hal_camera_default, not the running mtk_hal_camera.
+type sys_thermal_torch_real_level;
+allow mtk_hal_camera sys_thermal_torch_real_level:file { getattr open write };
+
 allow batterysecret sysfs_dash_sconfig:file { getattr open read write };
 allow cameramind_app sysfs_dash_sconfig:file { getattr ioctl lock map open read watch watch_reads };
 allow factory sysfs_dash_sconfig:file { append getattr ioctl lock map open read watch watch_reads write };
