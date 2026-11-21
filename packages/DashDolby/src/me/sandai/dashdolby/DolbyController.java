@@ -29,6 +29,12 @@ public class DolbyController {
     private static final String KEY_GRAPHIC_EQUALIZER_GAINS = "geq_gains";
     private static final String KEY_GRAPHIC_EQUALIZER_PRESET = "geq_preset";
 
+    private static final int[] ENHANCEMENT_PARAMS = {
+            DolbyAudioEffect.DAP_PARAM_DIALOG_ENHANCER,
+            DolbyAudioEffect.DAP_PARAM_VOLUME_LEVELER,
+            DolbyAudioEffect.DAP_PARAM_HEADPHONE_VIRTUALIZER,
+    };
+
     public static final int GRAPHIC_EQUALIZER_CONTROL_COUNT = 10;
     public static final int GRAPHIC_EQUALIZER_PRESET_COUNT = 9;
     public static final int GRAPHIC_EQUALIZER_MIN_QUARTER_DB = -24;
@@ -96,8 +102,9 @@ public class DolbyController {
             if (!mEffect.hasControl()) {
                 throw new IllegalStateException("created without control");
             }
-            applyBootState();
-            Log.i(TAG, "DAP effect created, profiles=" + mEffect.getProfileCount());
+            int profileCount = mEffect.getProfileCount();
+            Log.i(TAG, "DAP effect created, profiles=" + profileCount);
+            applyBootState(profileCount);
             mCreateAttempts = 0;
         } catch (RuntimeException e) {
             releaseEffect();
@@ -121,32 +128,28 @@ public class DolbyController {
         }
     }
 
-    private void applyBootState() {
+    private void applyBootState(int profileCount) {
         try {
             mEffect.setDsOn(mPrefs.getBoolean(KEY_DS_ON, true));
             int profile = mPrefs.getInt(KEY_PROFILE, 0);
-            if (profile >= 0 && profile < mEffect.getProfileCount()) {
+            if (profile >= 0 && profile < profileCount) {
                 mEffect.setActiveProfile(profile);
             }
-            for (int i = 0; i < mEffect.getProfileCount(); i++) {
-                String presetKey = profileKey(i, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET);
-                if (mPrefs.contains(presetKey)) {
-                    int preset = mPrefs.getInt(presetKey, 2);
-                    mEffect.setProfileParameter(i, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET,
-                            preset);
-                    mEffect.setProfileParameter(i,
-                            DolbyAudioEffect.DAP_PARAM_GRAPHIC_EQUALIZER,
-                            preset == 0 ? 1 : 0);
-                    if (preset == 0) {
-                        mEffect.setProfileParameter(i,
-                                DolbyAudioEffect.DAP_PARAM_GRAPHIC_EQUALIZER_GAINS,
-                                toDapGains(getActiveGraphicEqualizerGains(i)));
+            for (int i = 0; i < profileCount; i++) {
+                Integer preset = getSavedProfileInt(i, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET);
+                if (preset != null) {
+                    applyIeqPreset(i, preset);
+                }
+                for (int param : ENHANCEMENT_PARAMS) {
+                    Integer value = getSavedProfileInt(i, param);
+                    if (value != null) {
+                        mEffect.setProfileParameter(i, param, value);
                     }
                 }
             }
             mEffect.commit();
         } catch (RuntimeException e) {
-            Log.e(TAG, "applyBootState failed", e);
+            Log.e(TAG, "Failed to apply saved Dolby settings", e);
         }
     }
 
@@ -184,16 +187,10 @@ public class DolbyController {
         }
     }
 
-    public boolean getProfileBool(int profile, int param, boolean def) {
-        return mPrefs.getInt(profileKey(profile, param), def ? 1 : 0) != 0;
-    }
-
-    public void setProfileBool(int profile, int param, boolean value) {
-        setProfileInt(profile, param, value ? 1 : 0);
-    }
-
-    public int getProfileInt(int profile, int param, int def) {
-        return mPrefs.getInt(profileKey(profile, param), def);
+    /** A missing override leaves this option to the vendor effect. */
+    public Integer getSavedProfileInt(int profile, int param) {
+        String key = profileKey(profile, param);
+        return mPrefs.contains(key) ? mPrefs.getInt(key, 0) : null;
     }
 
     public void setProfileInt(int profile, int param, int value) {
@@ -212,18 +209,21 @@ public class DolbyController {
                 preset).apply();
         if (mEffect == null) return;
         try {
-            mEffect.setProfileParameter(profile, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET,
-                    preset);
-            mEffect.setProfileParameter(profile,
-                    DolbyAudioEffect.DAP_PARAM_GRAPHIC_EQUALIZER, preset == 0 ? 1 : 0);
-            if (preset == 0) {
-                mEffect.setProfileParameter(profile,
-                        DolbyAudioEffect.DAP_PARAM_GRAPHIC_EQUALIZER_GAINS,
-                        toDapGains(getActiveGraphicEqualizerGains(profile)));
-            }
+            applyIeqPreset(profile, preset);
             mEffect.commit();
         } catch (RuntimeException e) {
             Log.e(TAG, "setIeqPreset failed", e);
+        }
+    }
+
+    private void applyIeqPreset(int profile, int preset) {
+        mEffect.setProfileParameter(profile, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET, preset);
+        mEffect.setProfileParameter(profile,
+                DolbyAudioEffect.DAP_PARAM_GRAPHIC_EQUALIZER, preset == 0 ? 1 : 0);
+        if (preset == 0) {
+            mEffect.setProfileParameter(profile,
+                    DolbyAudioEffect.DAP_PARAM_GRAPHIC_EQUALIZER_GAINS,
+                    toDapGains(getActiveGraphicEqualizerGains(profile)));
         }
     }
 

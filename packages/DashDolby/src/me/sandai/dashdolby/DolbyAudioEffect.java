@@ -76,7 +76,7 @@ public class DolbyAudioEffect extends AudioEffect {
 
     public void setDsOn(boolean on) {
         setIntParam(PARAM_DS_ON, on ? 1 : 0);
-        setEnabled(on);
+        checkStatus(setEnabled(on));
     }
 
     public int getProfileCount() {

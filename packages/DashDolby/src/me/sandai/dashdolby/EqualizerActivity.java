@@ -30,7 +30,6 @@ public class EqualizerActivity extends CollapsingToolbarBaseActivity {
 
         private DolbyController mController;
         private int mProfile;
-        private int[] mGains;
         private EqualizerPreference mEqualizer;
         private ListPreference mPreset;
 
@@ -39,7 +38,6 @@ public class EqualizerActivity extends CollapsingToolbarBaseActivity {
             setPreferencesFromResource(R.xml.equalizer_prefs, rootKey);
             mController = DolbyController.getInstance(requireContext());
             mProfile = mController.getActiveProfile();
-            mGains = mController.getActiveGraphicEqualizerGains(mProfile);
 
             mPreset = findPreference("equalizer_preset");
             int preset = mController.getGraphicEqualizerPreset(mProfile);
@@ -48,28 +46,23 @@ public class EqualizerActivity extends CollapsingToolbarBaseActivity {
             mPreset.setOnPreferenceChangeListener((preference, newValue) -> {
                 int selected = Integer.parseInt((String) newValue);
                 mController.setGraphicEqualizerPreset(mProfile, selected);
-                mGains = mController.getActiveGraphicEqualizerGains(mProfile);
-                mEqualizer.setGains(mGains);
+                mEqualizer.setGains(mController.getActiveGraphicEqualizerGains(mProfile));
                 mPreset.setValue((String) newValue);
                 mPreset.setSummary(mPreset.getEntry());
                 return true;
             });
 
             mEqualizer = findPreference("equalizer_view");
-            mEqualizer.setGains(mGains);
+            mEqualizer.setGains(mController.getActiveGraphicEqualizerGains(mProfile));
             mEqualizer.setOnGainsChangedListener((gains, finished) -> {
-                mGains = gains;
-                if (!"0".equals(mPreset.getValue())) {
+                if (finished) {
+                    mController.setGraphicEqualizerGains(mProfile, gains);
                     mPreset.setValue("0");
                     mPreset.setSummary(mPreset.getEntry());
-                }
-                if (finished) {
-                    mController.setGraphicEqualizerGains(mProfile, mGains);
                 } else {
-                    mController.previewGraphicEqualizerGains(mProfile, mGains);
+                    mController.previewGraphicEqualizerGains(mProfile, gains);
                 }
             });
-
         }
     }
 }

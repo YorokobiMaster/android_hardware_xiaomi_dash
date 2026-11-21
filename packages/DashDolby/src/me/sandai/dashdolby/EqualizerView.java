@@ -40,6 +40,7 @@ public class EqualizerView extends View {
 
     private int[] mGains = new int[DolbyController.GRAPHIC_EQUALIZER_CONTROL_COUNT];
     private int mSelectedBand = 5;
+    private Integer mTouchStartGain;
     private OnBandChangeListener mListener;
 
     public EqualizerView(Context context, AttributeSet attrs) {
@@ -136,18 +137,27 @@ public class EqualizerView extends View {
                 getParent().requestDisallowInterceptTouchEvent(true);
                 requestFocus();
                 mSelectedBand = bandFromX(event.getX());
-                updateGainFromY(event.getY(), false);
+                mTouchStartGain = mGains[mSelectedBand];
+                setSelectedGain(gainFromY(event.getY()), false);
                 return true;
             case MotionEvent.ACTION_MOVE:
-                updateGainFromY(event.getY(), false);
+                if (mTouchStartGain != null) {
+                    setSelectedGain(gainFromY(event.getY()), false);
+                }
                 return true;
             case MotionEvent.ACTION_UP:
-                updateGainFromY(event.getY(), true);
+                if (mTouchStartGain != null) {
+                    int gain = gainFromY(event.getY());
+                    boolean changed = gain != mTouchStartGain;
+                    mTouchStartGain = null;
+                    setSelectedGain(gain, changed);
+                    if (!changed) sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_SELECTED);
+                }
                 getParent().requestDisallowInterceptTouchEvent(false);
                 performClick();
                 return true;
             case MotionEvent.ACTION_CANCEL:
-                notifyBandChanged(true);
+                cancelTouchEdit();
                 getParent().requestDisallowInterceptTouchEvent(false);
                 return true;
             default:
@@ -162,6 +172,20 @@ public class EqualizerView extends View {
     }
 
     @Override
+    protected void onDetachedFromWindow() {
+        cancelTouchEdit();
+        super.onDetachedFromWindow();
+    }
+
+    private void cancelTouchEdit() {
+        if (mTouchStartGain != null) {
+            int gain = mTouchStartGain;
+            mTouchStartGain = null;
+            setSelectedGain(gain, false);
+        }
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
@@ -171,10 +195,10 @@ public class EqualizerView extends View {
                 selectBand(Math.min(mGains.length - 1, mSelectedBand + 1));
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
-                setSelectedGain(mGains[mSelectedBand] + 2, true);
+                adjustSelectedGain(2);
                 return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                setSelectedGain(mGains[mSelectedBand] - 2, true);
+                adjustSelectedGain(-2);
                 return true;
             default:
                 return super.onKeyDown(keyCode, event);
@@ -194,11 +218,11 @@ public class EqualizerView extends View {
     @Override
     public boolean performAccessibilityAction(int action, Bundle arguments) {
         if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) {
-            setSelectedGain(mGains[mSelectedBand] + 2, true);
+            adjustSelectedGain(2);
             return true;
         }
         if (action == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) {
-            setSelectedGain(mGains[mSelectedBand] - 2, true);
+            adjustSelectedGain(-2);
             return true;
         }
         return super.performAccessibilityAction(action, arguments);
@@ -212,21 +236,33 @@ public class EqualizerView extends View {
         return Math.max(0, Math.min(mGains.length - 1, band));
     }
 
-    private void updateGainFromY(float touchY, boolean finished) {
+    private int gainFromY(float touchY) {
         float top = getPaddingTop() + dp(12);
         float bottom = getHeight() - getPaddingBottom() - dp(28);
-        int halfDbSteps = Math.round((bottom - touchY) * 24f / (bottom - top) - 12f);
-        setSelectedGain(halfDbSteps * 2, finished);
+        float quarterDb = (bottom - touchY) * 48f / (bottom - top) - 24f;
+        // A preset may use quarter-dB gains between the touch editor's half-dB steps.
+        if (Math.round(quarterDb) == mTouchStartGain) return mTouchStartGain;
+        return clampGain(Math.round(quarterDb / 2f) * 2);
+    }
+
+    private static int clampGain(int gain) {
+        return Math.max(DolbyController.GRAPHIC_EQUALIZER_MIN_QUARTER_DB,
+                Math.min(DolbyController.GRAPHIC_EQUALIZER_MAX_QUARTER_DB, gain));
     }
 
     private void setSelectedGain(int gain, boolean finished) {
-        int clamped = Math.max(DolbyController.GRAPHIC_EQUALIZER_MIN_QUARTER_DB,
-                Math.min(DolbyController.GRAPHIC_EQUALIZER_MAX_QUARTER_DB, gain));
+        int clamped = clampGain(gain);
         boolean changed = mGains[mSelectedBand] != clamped;
         mGains[mSelectedBand] = clamped;
         if (changed) performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
         invalidate();
         notifyBandChanged(finished);
+    }
+
+    private void adjustSelectedGain(int delta) {
+        int gain = mGains[mSelectedBand];
+        int adjusted = clampGain(gain + delta);
+        setSelectedGain(adjusted, adjusted != gain);
     }
 
     private void selectBand(int band) {
