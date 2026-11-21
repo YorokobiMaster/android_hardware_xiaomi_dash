@@ -1,0 +1,2 @@
+# First-stage module loading precedes the normal-boot switch_root.
+dyn_options mtu3 root /first_stage_ramdisk/system/bin/usb_offload_options

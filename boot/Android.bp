@@ -1,0 +1,30 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+cc_binary {
+    name: "usb_offload_options",
+    srcs: ["usb_offload_options.c"],
+    vendor_ramdisk_available: true,
+    static_executable: true,
+    stl: "none",
+    compile_multilib: "64",
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}
+
+genrule {
+    name: "usb_options_file",
+    srcs: ["modules.options"],
+    out: ["modules.options"],
+    // A linked source view must still give the prebuilt installer a regular file.
+    cmd: "cat $(in) > $(out)",
+}
+
+prebuilt_lib {
+    name: "kernel_usb_options",
+    relative_install_path: "modules",
+    vendor_ramdisk: true,
+    install_in_root: true,
+    install_path_skip_first_stage_ramdisk_dir: true,
+    src: ":usb_options_file",
+    filename: "modules.options",
+}
