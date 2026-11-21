@@ -1,0 +1,1 @@
+genfscon dmabuf / u:object_r:dmabuf_fs:s0
