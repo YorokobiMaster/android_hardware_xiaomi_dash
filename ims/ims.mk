@@ -1,7 +1,6 @@
 # Copyright (C) 2026 YorokobiMaster
 # SPDX-License-Identifier: Apache-2.0
 
-# Populate the stock parts under vendor/xiaomi/dash/ims with ims/extract-files.py.
 PRODUCT_PACKAGES += \
     ImsService \
     MtkGbaService \

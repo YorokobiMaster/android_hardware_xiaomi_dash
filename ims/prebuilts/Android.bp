@@ -2,7 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // MediaTek prebuilts from the dash OS4.0.4.0.XPLCNXM system_ext image.
-// Generate the vendor source files with ims/extract-files.py.
+// The Apache-2.0 identifier applies to this Blueprint, not the stock binaries.
+
+package {
+    default_applicable_licenses: ["mtk-ims-proprietary"],
+}
+
+license {
+    name: "mtk-ims-proprietary",
+    visibility: [":__subpackages__"],
+    license_kinds: ["legacy_proprietary"],
+}
 
 // Re-sign both APKs with the ROM's platform certificate for android.uid.phone.
 android_app_import {
