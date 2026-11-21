@@ -29,6 +29,10 @@ func main() {
 			if err != nil {
 				return err
 			}
+			// Stamped repositories' Git inputs are registered by Soong.
+			if entry.IsDir() && entry.Name() == ".git" {
+				return filepath.SkipDir
+			}
 			if entry.Type()&os.ModeSymlink != 0 {
 				if _, err := os.Stat(path); os.IsNotExist(err) {
 					return nil

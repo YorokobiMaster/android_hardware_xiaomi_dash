@@ -15,10 +15,11 @@ import (
 var pctx = android.NewPackageContext("kleaf/soong/kernel")
 
 type kernelProperties struct {
-	Script       *string  `android:"path"`
-	Inputs       []string `android:"path"`
-	Source_files []string
-	Source_dirs  []string
+	Script                *string  `android:"path"`
+	Inputs                []string `android:"path"`
+	Source_files          []string
+	Source_dirs           []string
+	Optional_source_files []string
 }
 
 type kernelModule struct {
@@ -62,9 +63,6 @@ func (m *kernelModule) createModuleInstallers(ctx android.LoadHookContext) {
 	systemDlkm := ctx.Config().VendorConfig("kleaf").Bool("system_dlkm")
 	for _, partition := range m.partitions(ctx) {
 		load := strings.Fields(ctx.Config().VendorConfig("kleaf").String(partition + "_load"))
-		if partition == "vendor_ramdisk" {
-			load = append([]string{"ufs_wlun_bootstrap.ko"}, load...)
-		}
 		props := &struct {
 			Name                  *string
 			Srcs                  proptools.Configurable[[]string]
@@ -97,10 +95,11 @@ func (m *kernelModule) createModuleInstallers(ctx android.LoadHookContext) {
 
 // Split source dependencies by top-level directory to stay below Ninja's
 // per-record deps-log limit. Kleaf retains ownership of its compilation cache.
-func (m *kernelModule) sourceDeps(ctx android.ModuleContext) android.Paths {
+func (m *kernelModule) sourceDeps(ctx android.ModuleContext, workspace string) android.Paths {
 	var inputs android.Paths
 	i := 0
-	for _, root := range m.properties.Source_dirs {
+	for _, dir := range m.properties.Source_dirs {
+		root := filepath.Join(workspace, dir)
 		entries, err := ctx.GlobWithDeps(filepath.Join(root, "*"), nil)
 		if err != nil {
 			ctx.ModuleErrorf("tracking %s: %s", root, err)
@@ -146,10 +145,21 @@ func (m *kernelModule) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 		ctx.ModuleErrorf("unknown kernel profile %q", profile)
 		return
 	}
-	inputs := m.sourceDeps(ctx)
+	workspace := config.String("workspace")
+	if workspace == "" {
+		ctx.ModuleErrorf("kleaf.workspace must name this ROM's kernel workspace")
+		return
+	}
+	inputs := m.sourceDeps(ctx, workspace)
 	inputs = append(inputs, android.PathsForModuleSrc(ctx, m.properties.Inputs)...)
 	for _, path := range m.properties.Source_files {
-		inputs = append(inputs, android.PathForSource(ctx, path))
+		inputs = append(inputs, android.PathForSource(ctx, workspace, path))
+	}
+	for _, path := range m.properties.Optional_source_files {
+		source := android.ExistentPathForSource(ctx, workspace, path)
+		if source.Valid() {
+			inputs = append(inputs, source.Path())
+		}
 	}
 	out := android.PathForModuleOut(ctx, profile)
 	image := out.Join(ctx, "Image.lz4")
@@ -169,6 +179,7 @@ func (m *kernelModule) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 	}
 	rule := android.NewRuleBuilder(pctx, ctx).SandboxDisabled().Restat()
 	rule.Command().Text("python3").Input(android.PathForModuleSrc(ctx, *m.properties.Script)).
+		FlagWithArg("--workspace ", workspace).
 		FlagWithArg("--profile ", profile).
 		FlagWithArg("--system-dlkm ", fmt.Sprint(config.Bool("system_dlkm"))).
 		FlagWithArg("--out ", out.String()).

@@ -18,3 +18,52 @@ blueprint_go_binary {
     name: "kernel_source_deps",
     srcs: ["source_deps/main.go"],
 }
+
+prebuilt_lib {
+    name: "kernel_recovery_load",
+    enabled: select(soong_config_variable("kleaf", "profile"), {
+        "normal": true,
+        "official": true,
+        default: false,
+    }),
+    relative_install_path: "modules",
+    vendor_ramdisk: true,
+    install_in_root: true,
+    install_path_skip_first_stage_ramdisk_dir: true,
+    src: ":kernel{.recovery_load}",
+    filename: "modules.load.recovery",
+}
+
+kleaf_kernel {
+    name: "kernel",
+    script: "export-kleaf.py",
+    inputs: [
+        "build-kleaf.sh",
+        "modules.vendor_ramdisk",
+        "modules.vendor_dlkm",
+        "modules.load.platform",
+        "modules.load.recovery",
+        "modules.load.vendor_dlkm",
+        "modules.load.system_dlkm",
+    ],
+    source_files: [
+        "device.bazelrc",
+        "WORKSPACE",
+        "tools/bazel",
+        "prebuilts/kernel-build-tools/bazel/linux-x86_64/bazel",
+    ],
+    optional_source_files: ["user.bazelrc"],
+    source_dirs: [
+        "build/bazel_common_rules",
+        "build/bazel_mgk_rules",
+        "build/kernel",
+        "common",
+        "common-modules",
+        "external",
+        "kernel",
+        "kernel-6.6",
+        "kernel_device_modules-6.6",
+        "prebuilts",
+        "vendor/mediatek/kernel_modules",
+    ],
+}
