@@ -1,0 +1,277 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+//
+// MediaTek prebuilts from the dash OS4.0.4.0.XPLCNXM system_ext image.
+// Generate the vendor source files with ims/extract-files.py.
+
+cc_prebuilt_library_shared {
+    name: "libcomutils",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libcomutils.so"],
+    shared_libs: [
+        "libc++",
+        "libcutils",
+        "libhidlbase",
+        "liblog",
+        "libmedia",
+        "libstagefright",
+        "libstagefright_foundation",
+        "libutils",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libimsma",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libimsma.so"],
+    shared_libs: [
+        "libbinder",
+        "libc++",
+        "libcomutils",
+        "libcutils",
+        "libgui",
+        "libimsma_rtp",
+        "liblog",
+        "libmedia",
+        "libnetd_client",
+        "libsignal",
+        "libsink",
+        "libsource",
+        "libstagefright",
+        "libstagefright_foundation",
+        "libui",
+        "libutils",
+        "libvcodec_cap",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libimsma_adapt",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libimsma_adapt.so"],
+    shared_libs: [
+        "libc++",
+        "liblog",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libimsma_rtp",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libimsma_rtp.so"],
+    shared_libs: [
+        "libbinder",
+        "libc++",
+        "libcutils",
+        "libimsma_adapt",
+        "libimsma_socketwrapper",
+        "liblog",
+        "libmedia",
+        "libsignal",
+        "libstagefright",
+        "libstagefright_foundation",
+        "libutils",
+        "libvcodec_cap",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libimsma_socketwrapper",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libimsma_socketwrapper.so"],
+    shared_libs: [
+        "libbinder",
+        "libc++",
+        "libcutils",
+        "liblog",
+        "libmedia",
+        "libnetd_client",
+        "libstagefright",
+        "libstagefright_foundation",
+        "libutils",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libmtk_vt_service",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libmtk_vt_service.so"],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "libbinder_ndk",
+        "libc++",
+        "libcutils",
+        "libfmq",
+        "libgui",
+        "libhidlbase",
+        "libhidltransport",
+        "libimsma",
+        "libimsma_rtp",
+        "liblog",
+        "libmedia",
+        "libsource",
+        "libstagefright_foundation",
+        "libui",
+        "libutils",
+        "libvcodec_cap",
+        "libvt_avsync",
+        "vendor.mediatek.hardware.videotelephony-V1-ndk",
+        "vendor.mediatek.hardware.videotelephony@1.0",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libmtk_vt_wrapper",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libmtk_vt_wrapper.so"],
+    shared_libs: [
+        "libandroid_runtime",
+        "libbinder",
+        "libbinder_ndk",
+        "libc++",
+        "libcutils",
+        "libfmq",
+        "libgui",
+        "libhidlbase",
+        "libhidltransport",
+        "liblog",
+        "libmedia",
+        "libnativehelper",
+        "libui",
+        "libutils",
+        "libvcodec_cap",
+        "vendor.mediatek.hardware.videotelephony-V1-ndk",
+        "vendor.mediatek.hardware.videotelephony@1.0",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libsignal",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libsignal.so"],
+    shared_libs: [
+        "libc++",
+        "libcutils",
+        "liblog",
+        "libstagefright_foundation",
+        "libutils",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libsink",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libsink.so"],
+    shared_libs: [
+        "libaudioclient",
+        "libbinder",
+        "libc++",
+        "libcomutils",
+        "libcutils",
+        "libgui",
+        "liblog",
+        "libmedia",
+        "libmedia_omx",
+        "libstagefright",
+        "libstagefright_foundation",
+        "libui",
+        "libutils",
+        "libvcodec_cap",
+        "libvt_avsync",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libsource",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libsource.so"],
+    shared_libs: [
+        "libbinder",
+        "libc++",
+        "libcamera_client",
+        "libcomutils",
+        "libcutils",
+        "libgui",
+        "libhardware",
+        "liblog",
+        "libmedia",
+        "libmedia_omx",
+        "libsignal",
+        "libstagefright",
+        "libstagefright_foundation",
+        "libui",
+        "libutils",
+        "libvcodec_cap",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libvcodec_cap",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libvcodec_cap.so"],
+    shared_libs: [
+        "aconfig_libgui_flags_c_lib",
+        "android.hardware.graphics.bufferqueue@2.0",
+        "libbinder",
+        "libc++",
+        "libcutils",
+        "libexpat",
+        "libion",
+        "liblog",
+        "libstagefright_foundation",
+        "libstagefright_omx_utils",
+        "libui",
+        "libutils",
+        "libvcodec_capenc",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libvcodec_capenc",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libvcodec_capenc.so"],
+    shared_libs: [
+        "libc++",
+        "libion",
+        "liblog",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libvt_avsync",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["libvt_avsync.so"],
+    shared_libs: [
+        "libbinder",
+        "libc++",
+        "libcutils",
+        "liblog",
+        "libutils",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "vendor.mediatek.hardware.videotelephony-V1-ndk",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["vendor.mediatek.hardware.videotelephony-V1-ndk.so"],
+    shared_libs: [
+        "android.hardware.common-V2-ndk",
+        "android.hardware.common.fmq-V1-ndk",
+        "libbinder_ndk",
+        "libc++",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "vendor.mediatek.hardware.videotelephony@1.0",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["vendor.mediatek.hardware.videotelephony@1.0.so"],
+    shared_libs: [
+        "libc++",
+        "libcutils",
+        "libhidlbase",
+        "liblog",
+        "libutils",
+    ],
+}

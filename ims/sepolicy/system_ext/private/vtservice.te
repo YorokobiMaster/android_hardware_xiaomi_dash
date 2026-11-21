@@ -1,0 +1,13 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+type ims_vtservice, domain, coredomain;
+type ims_vtservice_exec, system_file_type, exec_type, file_type;
+type ims_vtservice_service, service_manager_type, protected_service;
+
+init_daemon_domain(ims_vtservice)
+binder_use(ims_vtservice)
+binder_call(ims_vtservice, mediaserver)
+add_service(ims_vtservice, ims_vtservice_service)
+
+allow radio ims_vtservice_service:service_manager find;

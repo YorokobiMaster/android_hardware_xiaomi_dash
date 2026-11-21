@@ -1,0 +1,7 @@
+; Copyright (C) 2026 YorokobiMaster
+; SPDX-License-Identifier: Apache-2.0
+
+; Connect the system executable to OS4.0.4.0's retained video HAL, radio,
+; network capabilities and media-device rules.
+(typeattribute vtservice_202404)
+(typeattributeset vtservice_202404 (ims_vtservice))

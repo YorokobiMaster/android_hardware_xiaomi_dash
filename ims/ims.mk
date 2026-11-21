@@ -1,11 +1,12 @@
 # Copyright (C) 2026 YorokobiMaster
 # SPDX-License-Identifier: Apache-2.0
 
+# Populate the stock parts under vendor/xiaomi/dash/ims with ims/extract-files.py.
 PRODUCT_PACKAGES += \
     ImsService \
     MtkGbaService \
     dash-ims-appcompat \
-    dash-ims-telephony-metrics \
+    ims-compat-migrate \
     init.dash-ims.rc \
     mediatek-common \
     mediatek-ims-base \
@@ -15,12 +16,12 @@ PRODUCT_PACKAGES += \
     privapp-permissions-mediatek-ims \
     sysconfig-com.mediatek.ims \
     vendor.mediatek.hardware.videotelephony-V1-ndk \
-    vendor.mediatek.hardware.videotelephony@1.0
+    vendor.mediatek.hardware.videotelephony@1.0 \
+    vtservice
 
 # IMS and GBA services load these classes from the boot class path.
 PRODUCT_BOOT_JARS_EXTRA += \
     system_ext:mediatek-common \
-    system_ext:mediatek-ims-base \
-    system_ext:dash-ims-telephony-metrics
+    system_ext:mediatek-ims-base
 
 DEVICE_PACKAGE_OVERLAYS += $(DASH_HARDWARE_PATH)/ims/overlay

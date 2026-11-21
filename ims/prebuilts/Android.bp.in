@@ -1,0 +1,68 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+//
+// MediaTek prebuilts from the dash OS4.0.4.0.XPLCNXM system_ext image.
+// Generate the vendor source files with ims/extract-files.py.
+
+// Re-sign both APKs with the ROM's platform certificate for android.uid.phone.
+android_app_import {
+    name: "ImsService",
+    apk: "ImsService/ImsService.apk",
+    certificate: "platform",
+    privileged: true,
+    system_ext_specific: true,
+    optional_uses_libs: [
+        "com.mediatek.ims.oemplugin",
+        "com.mediatek.ims.plugin",
+    ],
+    dex_preopt: {
+        enabled: true,
+    },
+}
+
+android_app_import {
+    name: "MtkGbaService",
+    apk: "MtkGbaService/MtkGbaService.apk",
+    certificate: "platform",
+    privileged: true,
+    system_ext_specific: true,
+    dex_preopt: {
+        enabled: true,
+    },
+}
+
+dex_import {
+    name: "mediatek-common",
+    jars: ["framework/mediatek-common.jar"],
+    system_ext_specific: true,
+    use_generic_config: true,
+}
+
+dex_import {
+    name: "mediatek-ims-base",
+    jars: ["framework/mediatek-ims-base.jar"],
+    system_ext_specific: true,
+    use_generic_config: true,
+}
+
+cc_defaults {
+    name: "mtk-ims-prebuilt-defaults",
+    compile_multilib: "64",
+    system_ext_specific: true,
+    stl: "none",
+    strip: { none: true },
+}
+
+cc_prebuilt_binary {
+    name: "vtservice",
+    defaults: ["mtk-ims-prebuilt-defaults"],
+    srcs: ["bin/vtservice"],
+    shared_libs: [
+        "libbinder",
+        "libc++",
+        "libcutils",
+        "liblog",
+        "libmtk_vt_service",
+        "libutils",
+    ],
+}

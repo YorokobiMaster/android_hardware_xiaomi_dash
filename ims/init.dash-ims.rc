@@ -1,9 +1,37 @@
 # Copyright (C) 2026 YorokobiMaster
 # SPDX-License-Identifier: Apache-2.0
 
-# Run after /data's persistent properties load and before Zygote starts.
-# Both video gates must be off to skip the stock IMS VT client's native init
-# and its media.VTS retries. VoLTE and VoWiFi retain their existing settings.
-on post-fs-data
-    setprop persist.vendor.vilte_support 0
-    setprop persist.vendor.viwifi_support 0
+# Save the firmware's defaults before /data can override them.
+on early-init
+    setprop ro.dash.ims_vilte_default ${persist.vendor.vilte_support:-0}
+    setprop ro.dash.ims_viwifi_default ${persist.vendor.viwifi_support:-0}
+
+# This event is after post-fs-data loads persistent properties and before zygote-start.
+# Older ROMs saved zero for both gates; undo that once, only when the firmware says 1.
+on load-bpf-programs && property:ro.persistent_properties.ready=true && property:persist.sys.dash.ims_vt_migrated= && property:ro.dash.ims_vilte_default=1 && property:persist.vendor.vilte_support=0
+    setprop persist.vendor.vilte_support ${ro.dash.ims_vilte_default}
+
+on load-bpf-programs && property:ro.persistent_properties.ready=true && property:persist.sys.dash.ims_vt_migrated= && property:ro.dash.ims_viwifi_default=1 && property:persist.vendor.viwifi_support=0
+    setprop persist.vendor.viwifi_support ${ro.dash.ims_viwifi_default}
+
+on load-bpf-programs && property:ro.persistent_properties.ready=true && property:persist.sys.dash.ims_vt_migrated=
+    setprop persist.sys.dash.ims_vt_migrated 1
+
+# CompatConfig reads saved data after the product override.
+on load-bpf-programs && property:ro.persistent_properties.ready=true && property:persist.sys.dash.ims_appcompat_migrated=
+    exec - system system -- /system_ext/bin/ims-compat-migrate
+
+# OS4.0.4.0 system-side media.VTS. The vendor vtservice_aidl is a separate HAL.
+service vtservice /system_ext/bin/vtservice
+    class main
+    user system
+    group system camera graphics inet net_admin net_raw media sdcard_rw radio sdcard_r media_rw
+    capabilities NET_ADMIN NET_RAW
+    ioprio rt 4
+    disabled
+
+on property:init.svc.zygote=running && property:persist.vendor.vilte_support=1
+    start vtservice
+
+on property:init.svc.zygote=running && property:persist.vendor.viwifi_support=1
+    start vtservice

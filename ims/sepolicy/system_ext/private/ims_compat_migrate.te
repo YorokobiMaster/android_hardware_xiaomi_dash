@@ -1,0 +1,11 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+type ims_compat_migrate, domain, coredomain;
+type ims_compat_migrate_exec, system_file_type, exec_type, file_type;
+
+init_daemon_domain(ims_compat_migrate)
+set_prop(ims_compat_migrate, ims_appcompat_migrated_prop)
+
+allow ims_compat_migrate appcompat_data_file:dir { add_name open read remove_name search write };
+allow ims_compat_migrate appcompat_data_file:file { create getattr open read rename setattr unlink write };

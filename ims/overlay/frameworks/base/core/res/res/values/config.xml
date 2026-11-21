@@ -4,6 +4,6 @@
 <resources>
     <!-- VoLTE available -->
     <bool name="config_device_volte_available">true</bool>
-    <!-- Keep IMS voice while disabling IMS video calling. -->
-    <bool name="config_device_vt_available">false</bool>
+    <!-- Carrier configuration and subscription settings control IMS video. -->
+    <bool name="config_device_vt_available">true</bool>
 </resources>

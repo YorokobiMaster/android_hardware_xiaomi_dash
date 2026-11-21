@@ -2,3 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 vendor.ril.imsconfig.force.notify u:object_r:system_mtk_imsconfig_prop:s0 exact int
+ro.dash.ims_vilte_default u:object_r:dash_ims_vt_prop:s0 exact string
+ro.dash.ims_viwifi_default u:object_r:dash_ims_vt_prop:s0 exact string
+persist.sys.dash.ims_vt_migrated u:object_r:dash_ims_vt_prop:s0 exact bool
+persist.sys.dash.ims_appcompat_migrated u:object_r:ims_appcompat_migrated_prop:s0 exact bool

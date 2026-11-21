@@ -7,3 +7,14 @@ prebuilt_etc {
     sub_dir: "init",
     system_ext_specific: true,
 }
+
+cc_binary {
+    name: "ims-compat-migrate",
+    srcs: ["migrate-appcompat.cpp"],
+    shared_libs: [
+        "libbase",
+        "libtinyxml2",
+    ],
+    system_ext_specific: true,
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}

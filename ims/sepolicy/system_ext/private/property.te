@@ -2,3 +2,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 system_internal_prop(system_mtk_imsconfig_prop)
+system_internal_prop(dash_ims_vt_prop)
+system_internal_prop(ims_appcompat_migrated_prop)

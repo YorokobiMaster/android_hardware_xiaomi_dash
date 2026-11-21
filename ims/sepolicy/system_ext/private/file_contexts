@@ -1,0 +1,5 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+/(system_ext|system/system_ext)/bin/vtservice    u:object_r:ims_vtservice_exec:s0
+/(system_ext|system/system_ext)/bin/ims-compat-migrate    u:object_r:ims_compat_migrate_exec:s0
