@@ -8,7 +8,6 @@
     <string name="app_name">杜比全景声</string>
     <string name="dolby_settings_summary">音效风格和音频增强功能</string>
     <string name="dolby_unavailable">杜比音效尚未就绪，请稍后重新打开本页面。</string>
-    <string name="dolby_stock_tuning">沿用原厂调音</string>
     <string name="dolby_saved_choice">已保存：%1$s</string>
 
     <string name="ds_on_title">杜比全景声</string>
@@ -20,6 +19,7 @@
     <string name="profile_spatial">空间音频</string>
 
     <string name="ieq_preset_title">均衡器预设</string>
+    <string name="ieq_preset_default">默认</string>
     <string name="ieq_preset_manual">手动</string>
     <string name="ieq_preset_detailed">细腻</string>
     <string name="ieq_preset_balanced">均衡</string>

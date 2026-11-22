@@ -33,6 +33,14 @@ public class DolbyAudioEffect extends AudioEffect {
     private static final int PARAM_COMMIT = 0x09000000;
     private static final int PARAM_ACTIVE_PROFILE = 0x0a000000;
     private static final int PARAM_PROFILE_SETTINGS = 0x01000000;
+    private static final int PARAM_PROFILE_PORT_SETTINGS = 0x02000000;
+
+    static final int PORT_SPEAKER = 0;
+    static final int PORT_HDMI = 1;
+    static final int PORT_MIRACAST = 2;
+    static final int PORT_HEADPHONE = 3;
+    static final int PORT_BLUETOOTH = 4;
+    static final int PORT_USB = 5;
 
     // Per-profile parameters.
     public static final int DAP_PARAM_HEADPHONE_VIRTUALIZER = 101;
@@ -64,6 +72,21 @@ public class DolbyAudioEffect extends AudioEffect {
         intToBytes(param, buf, 0);
         checkStatus(getParameter(param + OPERATION, buf));
         return bytesToInt(buf, 0);
+    }
+
+    Integer readIeqPreset(int profile, int port) {
+        Integer activeProfile = readDapInt(PARAM_ACTIVE_PROFILE);
+        if (activeProfile == null || activeProfile != profile) return null;
+
+        // The vendor port-specific query packs the profile and port into one byte.
+        Integer preset = readDapInt(PARAM_PROFILE_PORT_SETTINGS | (DAP_PARAM_IEQ_PRESET << 16)
+                | (((profile << 4) | port) << 8));
+        return preset != null && preset >= 0 && preset <= 3 ? preset : null;
+    }
+
+    private Integer readDapInt(int param) {
+        byte[] buf = new byte[12];
+        return getParameter(param | OPERATION, buf) == buf.length ? bytesToInt(buf, 0) : null;
     }
 
     private void setIntParam(int param, int value) {

@@ -212,6 +212,16 @@ public class DolbyController {
         }
     }
 
+    Integer readCurrentIeqPreset(int profile, int port) {
+        if (port < 0 || !isDsOn() || mEffect == null) return null;
+        try {
+            return mEffect.getEnabled() ? mEffect.readIeqPreset(profile, port) : null;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Failed to read the current Dolby preset", e);
+            return null;
+        }
+    }
+
     public void setIeqPreset(int profile, int preset) {
         mPrefs.edit().putInt(profileKey(profile, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET),
                 preset).apply();
