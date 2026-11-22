@@ -97,7 +97,6 @@ public class AppDetailActivity extends CollapsingToolbarBaseActivity {
 
     private String mPackageName;
     private int mSelectedProfile = -1;
-    private int mOverrideProfile = -1;
     private int mPolicyRequest;
     private View mUnknownOption;
     private int mResultCode = RESULT_CANCELED;
@@ -345,7 +344,6 @@ public class AppDetailActivity extends CollapsingToolbarBaseActivity {
         }
         showAvailable();
         final int previous = mSelectedProfile;
-        mOverrideProfile = policy.getInt(ThermalServiceContract.KEY_OVERRIDE_PROFILE, -1);
         mSelectedProfile = ThermalProfiles.canon(policy.getInt(
                 ThermalServiceContract.KEY_SELECTED_PROFILE, 0));
         if (mUnknownOption != null && previous != mSelectedProfile) {
@@ -362,7 +360,7 @@ public class AppDetailActivity extends CollapsingToolbarBaseActivity {
     }
 
     private void onProfileSelected(int profileId) {
-        if (mSession.saving || profileId == mOverrideProfile) {
+        if (mSession.saving || profileId == mSelectedProfile) {
             return;
         }
         mPolicyRequest++;
