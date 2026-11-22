@@ -10,8 +10,6 @@
     <string name="dolby_unavailable">Dolby effect is not available yet. Reopen this page in a few seconds.</string>
     <string name="dolby_stock_tuning">Stock tuning</string>
     <string name="dolby_saved_choice">Saved: %1$s</string>
-    <string name="enhancement_off">Off</string>
-    <string name="enhancement_on">On</string>
 
     <string name="ds_on_title">Dolby Atmos</string>
 

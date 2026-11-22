@@ -187,6 +187,14 @@ public class DolbyController {
         }
     }
 
+    public boolean getProfileBool(int profile, int param, boolean def) {
+        return mPrefs.getInt(profileKey(profile, param), def ? 1 : 0) != 0;
+    }
+
+    public void setProfileBool(int profile, int param, boolean value) {
+        setProfileInt(profile, param, value ? 1 : 0);
+    }
+
     /** A missing override leaves this option to the vendor effect. */
     public Integer getSavedProfileInt(int profile, int param) {
         String key = profileKey(profile, param);

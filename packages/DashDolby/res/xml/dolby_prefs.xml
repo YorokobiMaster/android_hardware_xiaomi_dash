@@ -33,28 +33,25 @@
         android:summary="@string/equalizer_summary"
         android:persistent="false" />
 
-    <ListPreference
+    <SwitchPreferenceCompat
         android:key="dialog_enhancer"
         android:title="@string/dialog_enhancer_title"
-        android:dialogMessage="@string/dialog_enhancer_summary"
-        android:entries="@array/enhancement_option_names"
-        android:entryValues="@array/enhancement_option_values"
+        android:summary="@string/dialog_enhancer_summary"
+        android:defaultValue="true"
         android:persistent="false" />
 
-    <ListPreference
+    <SwitchPreferenceCompat
         android:key="volume_leveler"
         android:title="@string/volume_leveler_title"
-        android:dialogMessage="@string/volume_leveler_summary"
-        android:entries="@array/enhancement_option_names"
-        android:entryValues="@array/enhancement_option_values"
+        android:summary="@string/volume_leveler_summary"
+        android:defaultValue="true"
         android:persistent="false" />
 
-    <ListPreference
+    <SwitchPreferenceCompat
         android:key="headphone_virtualizer"
         android:title="@string/headphone_virtualizer_title"
-        android:dialogMessage="@string/headphone_virtualizer_summary"
-        android:entries="@array/enhancement_option_names"
-        android:entryValues="@array/enhancement_option_values"
+        android:summary="@string/headphone_virtualizer_summary"
+        android:defaultValue="true"
         android:persistent="false" />
 
 </PreferenceScreen>

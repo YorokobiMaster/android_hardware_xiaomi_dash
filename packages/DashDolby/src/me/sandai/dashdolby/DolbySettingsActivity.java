@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
+import androidx.preference.SwitchPreferenceCompat;
 
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 import com.android.settingslib.widget.MainSwitchPreference;
@@ -39,9 +40,9 @@ public class DolbySettingsActivity extends CollapsingToolbarBaseActivity {
         private ListPreference mProfile;
         private ListPreference mIeqPreset;
         private Preference mEqualizer;
-        private ListPreference mDialogEnhancer;
-        private ListPreference mVolumeLeveler;
-        private ListPreference mHeadphoneVirtualizer;
+        private SwitchPreferenceCompat mDialogEnhancer;
+        private SwitchPreferenceCompat mVolumeLeveler;
+        private SwitchPreferenceCompat mHeadphoneVirtualizer;
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -92,12 +93,12 @@ public class DolbySettingsActivity extends CollapsingToolbarBaseActivity {
             refreshProfileOption(mIeqPreset, profile, DolbyAudioEffect.DAP_PARAM_IEQ_PRESET);
             mEqualizer.setVisible("0".equals(mIeqPreset.getValue()));
 
-            refreshProfileOption(mDialogEnhancer, profile,
-                    DolbyAudioEffect.DAP_PARAM_DIALOG_ENHANCER);
-            refreshProfileOption(mVolumeLeveler, profile,
-                    DolbyAudioEffect.DAP_PARAM_VOLUME_LEVELER);
-            refreshProfileOption(mHeadphoneVirtualizer, profile,
-                    DolbyAudioEffect.DAP_PARAM_HEADPHONE_VIRTUALIZER);
+            mDialogEnhancer.setChecked(mController.getProfileBool(profile,
+                    DolbyAudioEffect.DAP_PARAM_DIALOG_ENHANCER, true));
+            mVolumeLeveler.setChecked(mController.getProfileBool(profile,
+                    DolbyAudioEffect.DAP_PARAM_VOLUME_LEVELER, true));
+            mHeadphoneVirtualizer.setChecked(mController.getProfileBool(profile,
+                    DolbyAudioEffect.DAP_PARAM_HEADPHONE_VIRTUALIZER, true));
 
             boolean on = mController.isDsOn();
             mProfile.setEnabled(on);
@@ -135,17 +136,17 @@ public class DolbySettingsActivity extends CollapsingToolbarBaseActivity {
                     }
                     break;
                 case "dialog_enhancer":
-                    mController.setProfileInt(profile, DolbyAudioEffect.DAP_PARAM_DIALOG_ENHANCER,
-                            Integer.parseInt((String) newValue));
+                    mController.setProfileBool(profile,
+                            DolbyAudioEffect.DAP_PARAM_DIALOG_ENHANCER, (Boolean) newValue);
                     break;
                 case "volume_leveler":
-                    mController.setProfileInt(profile, DolbyAudioEffect.DAP_PARAM_VOLUME_LEVELER,
-                            Integer.parseInt((String) newValue));
+                    mController.setProfileBool(profile,
+                            DolbyAudioEffect.DAP_PARAM_VOLUME_LEVELER, (Boolean) newValue);
                     break;
                 case "headphone_virtualizer":
-                    mController.setProfileInt(profile,
+                    mController.setProfileBool(profile,
                             DolbyAudioEffect.DAP_PARAM_HEADPHONE_VIRTUALIZER,
-                            Integer.parseInt((String) newValue));
+                            (Boolean) newValue);
                     break;
                 default:
                     return false;
