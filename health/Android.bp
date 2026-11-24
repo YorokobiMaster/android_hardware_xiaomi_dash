@@ -1,0 +1,20 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+cc_library_static {
+    name: "libdash-charging-control",
+    srcs: ["ChargingControlService.cpp"],
+    export_include_dirs: ["."],
+    static_libs: ["vendor.lineage.health-V2-ndk"],
+    shared_libs: ["libbase", "libbinder_ndk"],
+    system_ext_specific: true,
+}
+
+cc_library_static {
+    name: "libdash-fast-charge",
+    srcs: ["FastCharge.cpp"],
+    export_include_dirs: ["."],
+    static_libs: ["vendor.lineage.health-V2-ndk"],
+    shared_libs: ["libbase", "libbinder_ndk", "libcutils"],
+    system_ext_specific: true,
+}
