@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="me.sandai.overlay.dash.esim.india">
+    <overlay android:targetPackage="android"
+        android:isStatic="true" android:priority="200"
+        android:requiredSystemPropertyName="ro.product.odm.model"
+        android:requiredSystemPropertyValue="2602BPC18I" />
+</manifest>

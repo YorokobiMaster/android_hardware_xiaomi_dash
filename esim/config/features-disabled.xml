@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The POCO post-fs action bind-mounts the hardware declaration here. -->
+<permissions>
+    <component-override package="im.angry.openeuicc">
+        <component class=".ui.PrivilegedMainActivity" enabled="false" />
+    </component-override>
+</permissions>

@@ -1,0 +1,60 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+//
+// MediaTek prebuilts from POCO X8 Pro Max OS3.0.304.0.WPLMIXM, via
+// oss-dash/proprietary_vendor_xiaomi_dash at c0ac61d8a3859bd5f3cae83a9718ae4450322ed9.
+// The SPDX identifier applies to this Blueprint, not the stock binaries.
+
+package {
+    default_applicable_licenses: ["mtk-esim-proprietary"],
+}
+
+license {
+    name: "mtk-esim-proprietary",
+    visibility: [":__subpackages__"],
+    license_kinds: ["legacy_proprietary"],
+}
+
+cc_prebuilt_binary {
+    name: "dash-esim-modem",
+    srcs: ["bin/mtkmtb"],
+    system_ext_specific: true,
+    compile_multilib: "64",
+    strip: { none: true },
+    shared_libs: [
+        "libmipc_dash_esim", "libmtkrillog_dash_esim", "libutils", "libcutils", "libc++",
+    ],
+}
+
+cc_prebuilt_library_shared {
+    name: "libmipc_dash_esim",
+    stem: "libmipc",
+    srcs: ["lib64/libmipc.so"],
+    system_ext_specific: true,
+    relative_install_path: "dash-esim",
+    compile_multilib: "64",
+    strip: { none: true },
+    shared_libs: ["libmtkrillog_dash_esim", "libtrm_dash_esim", "libmtkproperty_dash_esim", "libc++"],
+}
+
+cc_prebuilt_library_shared {
+    name: "libtrm_dash_esim",
+    stem: "libtrm",
+    srcs: ["lib64/libtrm.so"],
+    system_ext_specific: true,
+    relative_install_path: "dash-esim",
+    compile_multilib: "64",
+    strip: { none: true },
+    shared_libs: ["libmtkrillog_dash_esim", "libmtkproperty_dash_esim", "libc++"],
+}
+
+cc_prebuilt_library_shared {
+    name: "libmtkrillog_dash_esim",
+    stem: "libmtkrillog",
+    srcs: ["lib64/libmtkrillog.so"],
+    system_ext_specific: true,
+    relative_install_path: "dash-esim",
+    compile_multilib: "64",
+    strip: { none: true },
+    shared_libs: ["liblog", "libc++"],
+}

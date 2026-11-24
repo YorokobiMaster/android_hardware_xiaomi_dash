@@ -1,0 +1,36 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# Bind-mount the POCO-only eSIM feature declaration during post-fs.
+allow init system_file:file mounton;
+
+type dash_esim_app, domain, coredomain;
+app_domain(dash_esim_app)
+allow dash_esim_app app_api_service:service_manager find;
+allow dash_esim_app system_api_service:service_manager find;
+allow dash_esim_app radio_service:service_manager find;
+
+type dash_esim_control, domain, coredomain;
+type dash_esim_control_exec, exec_type, system_file_type, file_type;
+type dash_esim_modem_exec, exec_type, system_file_type, file_type;
+init_daemon_domain(dash_esim_control)
+
+system_internal_prop(dash_esim_request_prop)
+system_internal_prop(dash_esim_response_prop)
+set_prop(dash_esim_app, dash_esim_request_prop)
+get_prop(dash_esim_app, dash_esim_response_prop)
+get_prop(dash_esim_control, dash_esim_request_prop)
+set_prop(dash_esim_control, dash_esim_response_prop)
+
+allow dash_esim_control shell_exec:file rx_file_perms;
+allow dash_esim_control toolbox_exec:file rx_file_perms;
+allow dash_esim_control dash_esim_modem_exec:file { rx_file_perms execute_no_trans };
+
+# These types are owned by the retained MTK vendor policy.
+type sysfs_ccci;
+type gsm0710muxd_device;
+type ccci_device;
+allow dash_esim_control sysfs_ccci:dir search;
+allow dash_esim_control sysfs_ccci:file { getattr open read lock map watch watch_reads };
+allow dash_esim_control gsm0710muxd_device:chr_file rw_file_perms;
+allow dash_esim_control ccci_device:chr_file r_file_perms;

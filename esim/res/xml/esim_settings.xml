@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <com.android.settingslib.widget.MainSwitchPreference
+        android:key="enabled" android:title="@string/enable" android:persistent="false" />
+    <Preference android:key="status" android:title="@string/status" android:selectable="false" />
+    <Preference android:key="manage" android:title="@string/manage" />
+    <Preference android:key="refresh" android:title="@string/refresh" />
+    <com.android.settingslib.widget.FooterPreference android:key="footer"
+        android:title="@string/footer" android:selectable="false" />
+</PreferenceScreen>

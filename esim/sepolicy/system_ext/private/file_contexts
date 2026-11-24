@@ -1,0 +1,2 @@
+/(system_ext|system/system_ext)/bin/dash-esim-control  u:object_r:dash_esim_control_exec:s0
+/(system_ext|system/system_ext)/bin/dash-esim-modem    u:object_r:dash_esim_modem_exec:s0

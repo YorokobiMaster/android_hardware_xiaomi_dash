@@ -1,0 +1,2 @@
+sys.dash.esim.request   u:object_r:dash_esim_request_prop:s0  exact string
+sys.dash.esim.response  u:object_r:dash_esim_response_prop:s0 exact string

@@ -1,0 +1,43 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+android_app {
+    name: "DashEsim",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    static_libs: [
+        "SettingsLibCollapsingToolbarBaseActivity",
+        "SettingsLibFooterPreference",
+        "SettingsLibMainSwitchPreference",
+    ],
+    platform_apis: true,
+    certificate: "platform",
+    privileged: true,
+    system_ext_specific: true,
+}
+
+sh_binary {
+    name: "dash-esim-control",
+    src: "dash-esim-control.sh",
+    system_ext_specific: true,
+}
+
+prebuilt_etc {
+    name: "init.dash-esim.rc",
+    src: "init.dash-esim.rc",
+    sub_dir: "init",
+    system_ext_specific: true,
+}
+
+// The stock MTK clients read vendor-internal properties. init supplies those
+// exact values as environment variables, keeping the system-side client out
+// of vendor_default_prop and leaving the retained vendor policy untouched.
+cc_library_shared {
+    name: "libmtkproperty_dash_esim",
+    stem: "libmtkproperty",
+    srcs: ["modem_properties.cpp"],
+    relative_install_path: "dash-esim",
+    system_ext_specific: true,
+    compile_multilib: "64",
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}

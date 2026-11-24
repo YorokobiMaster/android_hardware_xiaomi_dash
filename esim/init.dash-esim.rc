@@ -1,0 +1,12 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# Service argv is expanded by init; the setenv option does not expand properties.
+service dash-esim-control /system_ext/bin/dash-esim-control ${ro.vendor.mtk_thin_md_telephony_support_mode:-@unset} ${ro.vendor.md.state.path1:-@unset} ${ro.vendor.md.state.path2:-@unset} ${ro.vendor.md.state.ready:-@unset} ${ro.vendor.md.state.ready.key:-@unset} ${ro.vendor.md.flag.ready.key:-@unset} ${ro.vendor.md.ctrl.ready.key:-@unset} ${ro.vendor.md.ctrl.path1:-@unset} ${ro.vendor.md.ctrl.path2:-@unset}
+    disabled
+    oneshot
+    user radio
+    group radio system
+
+on property:sys.dash.esim.request=*
+    start dash-esim-control

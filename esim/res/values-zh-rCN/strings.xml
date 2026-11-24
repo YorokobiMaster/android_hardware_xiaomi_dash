@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">eSIM</string>
+    <string name="summary">切换 eSIM 与实体 SIM 卡 2</string>
+    <string name="enable">使用 eSIM</string>
+    <string name="status">卡槽模式</string>
+    <string name="manage">添加或管理 eSIM</string>
+    <string name="refresh">刷新状态</string>
+    <string name="footer">eSIM 与实体 SIM 卡 2 共用连接。启用 eSIM 后，实体 SIM 卡 2 将断开；实体 SIM 卡 1 仍可使用。</string>
+    <string name="state_enabled">已启用 eSIM</string>
+    <string name="state_disabled">已启用实体 SIM 卡 2</string>
+    <string name="state_unavailable">暂时无法读取基带卡槽信息，请在无线电就绪后刷新。</string>
+    <string name="switching">正在切换卡槽…</string>
+    <string name="switch_failed">基带未确认切换结果，请先刷新状态再重试。</string>
+    <string name="lpa_unavailable">eSIM 管理器不可用。</string>
+    <string name="disconnect_sim2_title">切换到 eSIM？</string>
+    <string name="disconnect_sim2_message">实体 SIM 卡 2 将断开，实体 SIM 卡 1 仍可使用。</string>
+    <string name="switch_to_esim">切换到 eSIM</string>
+    <string name="active_title">eSIM 正在使用中</string>
+    <string name="active_message">请先在“添加或管理 eSIM”中停用当前号码，再切换回实体 SIM 卡 2。</string>
+</resources>
