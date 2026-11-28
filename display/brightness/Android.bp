@@ -1,0 +1,7 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+filegroup {
+    name: "brightness-policy-sources",
+    srcs: ["src/**/*.java"],
+}
