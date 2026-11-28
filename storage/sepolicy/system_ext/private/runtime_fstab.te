@@ -1,0 +1,6 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# Both platform and retained vendor libfstab readers select this table.
+type runtime_fstab_file, file_type;
+allow domain runtime_fstab_file:file { getattr open read };

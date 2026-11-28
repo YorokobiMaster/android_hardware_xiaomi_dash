@@ -4,6 +4,7 @@
 DASH_HARDWARE_PATH ?= hardware/xiaomi/dash
 
 SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += \
-    $(DASH_HARDWARE_PATH)/sepolicy/system_ext/private
+    $(DASH_HARDWARE_PATH)/sepolicy/system_ext/private \
+    $(DASH_HARDWARE_PATH)/storage/sepolicy/system_ext/private
 
 include $(DASH_HARDWARE_PATH)/packages/DashLedService/BoardConfig.mk

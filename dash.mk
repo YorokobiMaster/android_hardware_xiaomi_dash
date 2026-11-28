@@ -5,6 +5,8 @@ DASH_HARDWARE_PATH ?= hardware/xiaomi/dash
 
 PRODUCT_SOONG_NAMESPACES += $(DASH_HARDWARE_PATH)
 
+$(call inherit-product, $(DASH_HARDWARE_PATH)/storage/device.mk)
+
 # Audio
 PRODUCT_PACKAGES += \
     dash-audio-parameter-parser \

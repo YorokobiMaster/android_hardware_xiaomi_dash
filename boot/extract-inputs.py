@@ -62,6 +62,19 @@ def extract_inputs(image_dir, unpacker, work):
     }
 
 
+def extract_vendor_fstab(image_dir):
+    path = "/etc/fstab.mt6991"
+    fstab = subprocess.check_output(["dump.erofs", "--cat", f"--path={path}",
+                                     image_dir / "vendor.img"])
+    data_rows = [fields for line in fstab.split(b"\n")
+                 if (fields := line.split()) and not fields[0].startswith(b"#")
+                 and fields[1:2] == [b"/data"]]
+    if (len(data_rows) != 1 or len(data_rows[0]) < 5 or
+            data_rows[0][:3] != [b"/dev/block/by-name/userdata", b"/data", b"f2fs"]):
+        raise ValueError(f"vendor.img:{path} does not contain a unique userdata /data entry")
+    return fstab
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract dash OS4 boot inputs. Run from an Android source root; "
@@ -71,6 +84,8 @@ def main():
                         help="factory image directory containing vendor_boot.img and vbmeta_vendor.img")
     parser.add_argument("vendor_dir", type=Path, nargs="?", default=Path("vendor/xiaomi/dash"),
                         help="destination (default: vendor/xiaomi/dash)")
+    parser.add_argument("--with-storage", action="store_true",
+                        help="also extract the runtime fstab from vendor.img (requires dump.erofs)")
     args = parser.parse_args()
 
     unpacker = Path("system/tools/mkbootimg/unpack_bootimg.py")
@@ -79,6 +94,8 @@ def main():
     try:
         with TemporaryDirectory(prefix="dash-boot-") as work:
             inputs = extract_inputs(args.image_dir, unpacker, Path(work))
+            if args.with_storage:
+                inputs["storage/fstab.mt6991"] = extract_vendor_fstab(args.image_dir)
 
         # Extract and validate everything before touching any existing input.
         for relative, data in inputs.items():
