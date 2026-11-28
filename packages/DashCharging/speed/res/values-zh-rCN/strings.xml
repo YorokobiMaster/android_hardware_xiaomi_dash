@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="charging_speed_title">极速充电</string>
+    <string name="charging_speed_summary">使用当前可用的最快速度充电。关闭后使用均衡模式。</string>
+    <string name="charging_speed_unavailable">无法获取当前充电模式</string>
+    <string name="charging_speed_error">无法更改充电模式</string>
+</resources>

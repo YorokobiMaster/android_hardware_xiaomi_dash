@@ -1,0 +1,14 @@
+// Copyright (C) 2026 YorokobiMaster
+// SPDX-License-Identifier: Apache-2.0
+
+android_library {
+    name: "charging-speed-switch",
+    srcs: ["src/**/*.java"],
+    libs: ["SettingsLibTile"],
+    platform_apis: true,
+}
+
+filegroup {
+    name: "charging-speed-provider-manifest",
+    srcs: ["provider.xml"],
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="me.sandai.chargingspeed">
+
+    <application>
+        <provider
+            android:name="me.sandai.chargingspeed.ChargingSpeedSettingsProvider"
+            android:authorities="me.sandai.dashcharging.speed"
+            android:directBootAware="true"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.profile"
+                android:value="primary_profile_only" />
+        </provider>
+    </application>
+</manifest>

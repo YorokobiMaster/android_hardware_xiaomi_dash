@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 YorokobiMaster
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="charging_speed_title">Top-speed charging</string>
+    <string name="charging_speed_summary">Use the fastest available charging speed. Turn off for balanced charging.</string>
+    <string name="charging_speed_unavailable">Charging mode is unavailable</string>
+    <string name="charging_speed_error">Couldn’t change charging mode</string>
+</resources>

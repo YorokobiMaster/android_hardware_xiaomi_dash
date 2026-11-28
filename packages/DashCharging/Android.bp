@@ -9,7 +9,10 @@ android_app {
     name: "DashCharging",
     srcs: ["src/**/*.java"],
     resource_dirs: ["res"],
-    static_libs: ["SettingsLibTile"],
+    static_libs: ["SettingsLibTile"] + select(soong_config_variable("dash", "charging_settings_lib"), {
+        any @ lib: [lib],
+        default: [],
+    }),
     platform_apis: true,
     certificate: "platform",
     privileged: true,
