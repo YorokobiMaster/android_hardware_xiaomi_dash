@@ -1,0 +1,6 @@
+# Copyright (C) 2026 YorokobiMaster
+# SPDX-License-Identifier: Apache-2.0
+
+# LK consumes this one-shot flag at the next boot, even if USB was unplugged at shutdown.
+on property:sys.shutdown.requested=0userrequested
+    write /sys/class/power_supply/battery/charger_partition_poweroffmode 1

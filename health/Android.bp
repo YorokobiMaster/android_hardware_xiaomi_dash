@@ -1,6 +1,13 @@
 // Copyright (C) 2026 YorokobiMaster
 // SPDX-License-Identifier: Apache-2.0
 
+prebuilt_etc {
+    name: "init.off-mode-charge.rc",
+    src: "init.off-mode-charge.rc",
+    sub_dir: "init",
+    system_ext_specific: true,
+}
+
 cc_library_static {
     name: "libdash-charging-control",
     srcs: ["ChargingControlService.cpp"],

@@ -26,4 +26,5 @@ $(call inherit-product, $(DASH_HARDWARE_PATH)/packages/DashWake/wake.mk)
 
 # Runtime configuration
 PRODUCT_PACKAGES += \
+    init.off-mode-charge.rc \
     privapp-permissions-dash-hardware
